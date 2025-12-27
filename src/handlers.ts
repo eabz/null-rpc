@@ -33,17 +33,31 @@ export async function handlePublicRequest(chain: string, request: Request, env: 
   return proxyRequest(nodeUrl, request, env.NULLRPC_AUTH)
 }
 
-export function handleAuthenticatedRequest(
+export async function handleAuthenticatedRequest(
   chain: string,
-  _token: string,
+  token: string,
   request: Request,
   env: Env
 ): Promise<Response> {
-  // Logic is currently same as public, but we might validate token later.
-  // For now, just forward to the chain nodes.
+  // 1. Get the Durable Object stub for this user (token)
+  // We use the token string itself as the name to get a stable ID
+  const id = env.USER_SESSION.idFromName(token)
+  const session = env.USER_SESSION.get(id)
 
-  // TODO: Validate token here if needed in future
+  // 2. Check limits
+  const { allowed, reason } = await session.checkLimit()
 
+  if (!allowed) {
+    const status = reason === 'monthly_limit' ? 402 : 429
+    return createJsonResponse(
+      {
+        error: reason === 'monthly_limit' ? 'Monthly limit exceeded' : 'Rate limit exceeded'
+      },
+      status
+    )
+  }
+
+  // 3. Proxy request if allowed
   return handlePublicRequest(chain, request, env)
 }
 

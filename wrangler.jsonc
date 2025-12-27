@@ -17,5 +17,19 @@
         }
       }
     ]
-  }
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "USER_SESSION",
+        "class_name": "UserSession"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["UserSession"]
+    }
+  ]
 }

@@ -95,6 +95,8 @@ export default {
   }
 } satisfies ExportedHandler<Env>
 
+export { UserSession } from './objects/session'
+
 async function checkRateLimitAndHandlePublic(chain: string, request: Request, env: Env): Promise<Response> {
   const ip = request.headers.get('cf-connecting-ip') || 'unknown'
   const { success } = await env.RATE_LIMITER.limit({ key: ip })
