@@ -12,7 +12,7 @@ import { handleAuthenticatedRequest, handleRequest, handleRoot } from './handler
  * - `/:chain/:token`     -> Authenticated access (e.g. /eth/123-abc)
  */
 export default {
-  async fetch(request, env): Promise<Response> {
+  async fetch(request, env, ctx): Promise<Response> {
     const url = new URL(request.url)
     const path = url.pathname
 
@@ -39,7 +39,7 @@ export default {
       const chain = path.slice(start)
       if (!chain) return handleRoot() // Handle "/" strictly if missed fast path
 
-      return checkRateLimitAndHandlePublic(chain, request, env)
+      return checkRateLimitAndHandlePublic(chain, request, env, ctx)
     }
 
     // Extract first segment: "chain"
@@ -64,10 +64,10 @@ export default {
       if (!token) {
         // CASE: "/:chain/"
         // Trailing slash after chain means it is still a public request.
-        return checkRateLimitAndHandlePublic(chain, request, env)
+        return checkRateLimitAndHandlePublic(chain, request, env, ctx)
       }
 
-      return handleAuthenticatedRequest(chain, token, request, env)
+      return handleAuthenticatedRequest(chain, token, request, env, ctx)
     }
 
     // Extract second segment: "token"
@@ -91,13 +91,18 @@ export default {
 
     // CASE: "/:chain/:token/"
     // Valid authenticated request with trailing slash.
-    return handleAuthenticatedRequest(chain, token, request, env)
+    return handleAuthenticatedRequest(chain, token, request, env, ctx)
   }
 } satisfies ExportedHandler<Env>
 
 export { UserSession } from './objects/session'
 
-async function checkRateLimitAndHandlePublic(chain: string, request: Request, env: Env): Promise<Response> {
+async function checkRateLimitAndHandlePublic(
+  chain: string,
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext
+): Promise<Response> {
   const ip = request.headers.get('cf-connecting-ip') || 'unknown'
   const { success } = await env.RATE_LIMITER.limit({ key: ip })
 
@@ -105,5 +110,5 @@ async function checkRateLimitAndHandlePublic(chain: string, request: Request, en
     return new Response('Rate Limit Exceeded', { status: 429 })
   }
 
-  return handleRequest(chain, request, env)
+  return handleRequest(chain, request, env, undefined, ctx)
 }

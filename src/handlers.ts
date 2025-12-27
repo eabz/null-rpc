@@ -1,3 +1,4 @@
+import { cacheResponse, calculateCacheKey, getCachedResponse, getCacheTtl } from './cache'
 import { CHAIN_NODES, type ChainId } from './constants'
 import { createJsonResponse, createRawJsonResponse } from './response'
 
@@ -20,8 +21,50 @@ export async function handleRequest(
   chain: string,
   request: Request,
   env: Env,
-  preferredNodeIndex?: number
+  preferredNodeIndex?: number,
+  ctx?: ExecutionContext
 ): Promise<Response> {
+  // Try caching only if we have a context (sanity check)
+  // We need to clone the request because we read the body for caching key
+  // and then we need to pass a fresh request to fetch.
+  // BUT: `proxyRequest` also expects a request.
+
+  let cachedResponse: Response | null = null
+  let cacheKeyUrl: string | null = null
+  let ttl = 0
+  let requestBody: any = null
+
+  // clone request to read body
+  const requestClone = request.clone()
+
+  try {
+    if (request.method === 'POST') {
+      try {
+        requestBody = await requestClone.json()
+        // Check if we should cache this method
+        if (requestBody?.method) {
+          ttl = getCacheTtl(requestBody.method, requestBody.params)
+          if (ttl > 0 && ctx) {
+            cacheKeyUrl = await calculateCacheKey(chain, requestBody)
+            cachedResponse = await getCachedResponse(cacheKeyUrl)
+          }
+        }
+      } catch (_) {
+        // Invalid JSON, proceed without caching
+      }
+    }
+  } catch (_) {
+    // Cloning error or something, ignore caching
+  }
+
+  if (cachedResponse) {
+    // Return cached response via a clone to keep the original stream in cache (if that matters, though Cache API returns fresh response)
+    // We update headers?
+    const response = new Response(cachedResponse.body, cachedResponse)
+    response.headers.set('X-NullRPC-Cache', 'HIT')
+    return response
+  }
+
   const nodes = CHAIN_NODES[chain as ChainId]
 
   if (!nodes || nodes.length === 0) {
@@ -44,14 +87,22 @@ export async function handleRequest(
 
   const targetUrl = `${nodeUrl}/${chain}`
 
-  return proxyRequest(targetUrl, request, env.NULLRPC_AUTH)
+  const response = await proxyRequest(targetUrl, request, env.NULLRPC_AUTH)
+
+  // Save to cache if applicable
+  if (ctx && cacheKeyUrl && ttl > 0 && response.ok) {
+    ctx.waitUntil(cacheResponse(cacheKeyUrl, response, ttl, ctx))
+  }
+
+  return response
 }
 
 export async function handleAuthenticatedRequest(
   chain: string,
   token: string,
   request: Request,
-  env: Env
+  env: Env,
+  ctx: ExecutionContext
 ): Promise<Response> {
   // 0.  Validate Chain before checking limits to ensure we have node count
   const nodes = CHAIN_NODES[chain as ChainId]
@@ -83,7 +134,7 @@ export async function handleAuthenticatedRequest(
   }
 
   // 3. Proxy request if allowed, passing the sticky node index
-  return handleRequest(chain, request, env, nodeIndex)
+  return handleRequest(chain, request, env, nodeIndex, ctx)
 }
 
 async function proxyRequest(targetUrl: string, originalRequest: Request, authHeader: string): Promise<Response> {
