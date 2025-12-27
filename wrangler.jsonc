@@ -3,6 +3,6 @@
   "main": "src/index.ts",
 	"compatibility_date": "2025-12-25",
   "observability": {
-    "enabled": true
+    "enabled": false
   }
 }
