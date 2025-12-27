@@ -18,7 +18,7 @@ export async function calculateCacheKey(chain: string, body: any): Promise<strin
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: we don't check for params yet
-export function getCacheTtl(method: string, _params: any[]): number {
+export function getCacheTtl(method: string, params: any[]): number {
   switch (method) {
     // Live data (Short TTL)
     case 'eth_blockNumber':
@@ -37,9 +37,15 @@ export function getCacheTtl(method: string, _params: any[]): number {
       return 900 // 15 minutes
 
     // Block by number: if 'latest' -> short, specific number -> long
-    // TODO: parsing param to handle proper caching.
-    case 'eth_getBlockByNumber':
-      return 1
+    case 'eth_getBlockByNumber': {
+      const blockTag = params[0]
+      // Standard tags that change: latest, earliest, pending, safe, finalized
+      if (['latest', 'earliest', 'pending', 'safe', 'finalized'].includes(blockTag)) {
+        return 1
+      }
+      // Specific block number (hex string) -> Static
+      return 900
+    }
 
     default:
       return 0 // Do not cache by default
