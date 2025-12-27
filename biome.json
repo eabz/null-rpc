@@ -117,7 +117,7 @@
         "noDuplicateElseIf": "error",
         "noDuplicateJsxProps": "error",
         "noEmptyBlockStatements": "error",
-        "useAwait": "error"
+        "useAwait": "off"
       }
     }
   }

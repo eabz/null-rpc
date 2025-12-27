@@ -12,7 +12,7 @@ import { handleAuthenticatedRequest, handlePublicRequest, handleRoot } from './h
  * - `/:chain/:token`     -> Authenticated access (e.g. /eth/123-abc)
  */
 export default {
-  fetch(request, env, ctx): Response {
+  async fetch(request, env): Promise<Response> {
     const url = new URL(request.url)
     const path = url.pathname
 
@@ -38,7 +38,8 @@ export default {
     if (nextSlash === -1) {
       const chain = path.slice(start)
       if (!chain) return handleRoot() // Handle "/" strictly if missed fast path
-      return handlePublicRequest(chain)
+
+      return checkRateLimitAndHandlePublic(chain, request, env)
     }
 
     // Extract first segment: "chain"
@@ -49,6 +50,9 @@ export default {
       return new Response('Not Found', { status: 404 })
     }
 
+    // -------------------------------------------------------------------------
+    // 3. Rate Limiting for Public Requests
+    // -------------------------------------------------------------------------
     // Check for next segment: "token"
     const tokenStart = nextSlash + 1
     const tokenEnd = path.indexOf('/', tokenStart)
@@ -56,12 +60,14 @@ export default {
     // CASE: "/:chain/:token" (potentially with no trailing slash)
     if (tokenEnd === -1) {
       const token = path.slice(tokenStart)
+
       if (!token) {
         // CASE: "/:chain/"
         // Trailing slash after chain means it is still a public request.
-        return handlePublicRequest(chain)
+        return checkRateLimitAndHandlePublic(chain, request, env)
       }
-      return handleAuthenticatedRequest(chain, token)
+
+      return handleAuthenticatedRequest(chain, token, request)
     }
 
     // Extract second segment: "token"
@@ -73,7 +79,7 @@ export default {
     }
 
     // -------------------------------------------------------------------------
-    // 3. Validation for extra segments
+    // 4. Validation for extra segments
     // -------------------------------------------------------------------------
     // CASE: "/:chain/:token/something"
     // We strictly support only depth-2 for authenticated routes.
@@ -85,6 +91,17 @@ export default {
 
     // CASE: "/:chain/:token/"
     // Valid authenticated request with trailing slash.
-    return handleAuthenticatedRequest(chain, token)
+    return handleAuthenticatedRequest(chain, token, request)
   }
-} satisfies ExportedHandler
+} satisfies ExportedHandler<Env>
+
+async function checkRateLimitAndHandlePublic(chain: string, request: Request, env: Env): Promise<Response> {
+  const ip = request.headers.get('cf-connecting-ip') || 'unknown'
+  const { success } = await env.RATE_LIMITER.limit({ key: ip })
+
+  if (!success) {
+    return new Response('Rate Limit Exceeded', { status: 429 })
+  }
+
+  return handlePublicRequest(chain, request)
+}
