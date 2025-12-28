@@ -1,4 +1,4 @@
-import { handleAuthenticatedRequest, handleRequest, handleRoot, handleStats } from '@/handlers'
+import { handleAuthenticatedRequest, handleRequest, handleRoot } from '@/handlers'
 
 export { UserSession } from './objects/session'
 
