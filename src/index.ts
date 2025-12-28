@@ -23,6 +23,10 @@ export default {
       return handleRoot()
     }
 
+    if (path === '/admin/force-plan' && request.method === 'POST') {
+      return handleAdminForcePlan(request, env)
+    }
+
     // -------------------------------------------------------------------------
     // 2. Zero-allocation routing logic
     // -------------------------------------------------------------------------
@@ -96,6 +100,25 @@ export default {
 } satisfies ExportedHandler<Env>
 
 export { UserSession } from './objects/session'
+
+// Admin Helper to force a plan for a user (TESTING ONLY)
+async function handleAdminForcePlan(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url)
+  const token = url.searchParams.get('token')
+  const plan = url.searchParams.get('plan')
+
+  if (!token || !plan) {
+    return new Response('Missing token or plan', { status: 400 })
+  }
+
+  const id = env.USER_SESSION.idFromName(token)
+  const session = env.USER_SESSION.get(id)
+
+  // @ts-expect-error - we need to cast plan to PlanType but it's fine for testing
+  await session.setPlan(plan)
+
+  return new Response(`Plan set to ${plan} for token ${token}`)
+}
 
 async function checkRateLimitAndHandlePublic(
   chain: string,

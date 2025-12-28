@@ -65,7 +65,8 @@ export async function handleRequest(
     return response
   }
 
-  const nodes = CHAIN_NODES[chain as ChainId]
+  //const nodes = CHAIN_NODES[chain as ChainId]
+  const nodes = [env.TEST_NODE]
 
   if (!nodes || nodes.length === 0) {
     return createJsonResponse(
