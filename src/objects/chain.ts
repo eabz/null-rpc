@@ -6,7 +6,7 @@ interface ChainData {
   chainId: number
   nodes: string[]
   archive_nodes: string[]
-  mev_protection?: string
+  mev_nodes: string[]
 }
 
 export class ChainDO extends DurableObject<Env> {
@@ -21,10 +21,8 @@ export class ChainDO extends DurableObject<Env> {
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url)
-    const chainSlug = url.pathname.split('/')[1] // Assuming /:chain format incoming, or we pass it
-    // Actually, DO URL is usually http://do/path, so maybe we pass slug in header or just rely on state.
+    const chainSlug = url.pathname.split('/')[1]
 
-    // Better: Helper method to ensure data is loaded
     await this.ensureChainData(chainSlug)
 
     if (!this.chainData) {
@@ -34,69 +32,168 @@ export class ChainDO extends DurableObject<Env> {
     // Clone request for inspection
     const clone = request.clone()
     let method = 'unknown'
-    let isArchive = false
+    let params: unknown[] = []
 
     try {
       const body = (await clone.json()) as { method?: string; params?: unknown[] }
       if (body?.method) {
         method = body.method
-        // Basic archive detection (can be improved)
-        if (method.includes('getLog') || method.includes('trace') || method.includes('debug')) {
-          isArchive = true
-        }
-        // eth_call or eth_getBalance with "earliest" or specific old block also implies archive often,
-        // but let's stick to simple method checks for now as requested.
+        params = body.params || []
       }
     } catch (_) {
-      // Ignore JSON parse errors here, upstream will handle or proxy simple requests
+      // Ignore JSON parse errors
     }
 
-    // Select nodes
-    const nodes = isArchive ? this.chainData.archive_nodes : this.chainData.nodes
-    if (!nodes || nodes.length === 0) {
+    // Determine request type for smart routing
+    const routingType = this.determineRoutingType(method, params)
+
+    // Route based on type
+    switch (routingType) {
+      case 'mev':
+        return this.handleMevRequest(request)
+      case 'archive':
+        return this.handleArchiveRequest(request, chainSlug)
+      default:
+        return this.handleStandardRequest(request, chainSlug)
+    }
+  }
+
+  /**
+   * Determine the routing type based on method and params
+   */
+  private determineRoutingType(method: string, params: unknown[]): 'mev' | 'archive' | 'standard' {
+    // MEV protection for raw transactions
+    if (method === 'eth_sendRawTransaction') {
+      return 'mev'
+    }
+
+    // Archive methods - traces and debug
+    if (
+      method.startsWith('trace_') ||
+      method.startsWith('debug_') ||
+      method === 'eth_getLogs'
+    ) {
+      return 'archive'
+    }
+
+    // Check for old block references in params
+    if (this.requiresArchiveNode(method, params)) {
+      return 'archive'
+    }
+
+    return 'standard'
+  }
+
+  /**
+   * Check if the request requires an archive node based on block params
+   */
+  private requiresArchiveNode(method: string, params: unknown[]): boolean {
+    // Methods that take a block parameter
+    const blockMethods = [
+      'eth_getBalance',
+      'eth_getCode',
+      'eth_getTransactionCount',
+      'eth_getStorageAt',
+      'eth_call'
+    ]
+
+    if (!blockMethods.includes(method)) return false
+
+    // Check last param for block reference
+    const lastParam = params[params.length - 1]
+    if (typeof lastParam === 'string') {
+      // "earliest" or specific old block numbers need archive
+      if (lastParam === 'earliest') return true
+      // Hex block number - if it's a low number, likely needs archive
+      if (lastParam.startsWith('0x')) {
+        const blockNum = parseInt(lastParam, 16)
+        // Consider blocks older than 128 as needing archive (safe head distance)
+        if (blockNum > 0 && blockNum < 15000000) return true // Rough heuristic for ETH
+      }
+    }
+
+    return false
+  }
+
+  /**
+   * Handle MEV-protected transactions
+   */
+  private async handleMevRequest(request: Request): Promise<Response> {
+    const mevNodes = this.chainData?.mev_nodes || []
+
+    // Try MEV nodes first
+    if (mevNodes.length > 0) {
+      const shuffled = [...mevNodes].sort(() => 0.5 - Math.random())
+      for (const nodeUrl of shuffled.slice(0, 2)) {
+        const response = await this.proxyRequest(nodeUrl, request.clone())
+        if (response.ok) return response
+      }
+    }
+
+    // Fallback to regular nodes if MEV nodes fail or don't exist
+    const nodes = this.chainData?.nodes || []
+    if (nodes.length === 0) {
       return new Response(
-        JSON.stringify({ error: `No ${isArchive ? 'archive ' : ''}nodes available for ${chainSlug}` }),
+        JSON.stringify({ error: 'No nodes available' }),
         { status: 503, headers: { 'Content-Type': 'application/json' } }
       )
     }
 
-    // MEV Protection Check (only for transactions on Mainnet/supported chains)
-    // If method is eth_sendRawTransaction and we have MEV protection configured
-    if (method === 'eth_sendRawTransaction' && this.chainData.mev_protection) {
-      try {
-        const response = await this.proxyRequest(this.chainData.mev_protection, request.clone())
-        if (response.ok) return response
-        // If MEV protection fails, we likely SHOULD fail or fallback depending on policy.
-        // Usually fail-safe for privacy.
-        return response
-      } catch (e) {
-        return new Response(JSON.stringify({ error: 'MEV Protection Error' }), { status: 502 })
-      }
-    }
-
-    // Round-Robin / Random Selection with Retry
-    // We try up to 3 nodes
-    const maxRetries = 3
-    let lastError: Response | null = null
-
-    // Simple shuffle for this request
     const shuffled = [...nodes].sort(() => 0.5 - Math.random())
-    const selectedNodes = shuffled.slice(0, maxRetries)
-
-    for (const nodeUrl of selectedNodes) {
+    for (const nodeUrl of shuffled.slice(0, 3)) {
       const response = await this.proxyRequest(nodeUrl, request.clone())
-      if (response.ok) {
-        return response
-      }
-      lastError = response
+      if (response.ok) return response
     }
 
-    return (
-      lastError ||
-      new Response(JSON.stringify({ error: 'All upstream nodes failed' }), {
-        status: 502,
-        headers: { 'Content-Type': 'application/json' }
-      })
+    return new Response(
+      JSON.stringify({ error: 'All nodes failed for transaction' }),
+      { status: 502, headers: { 'Content-Type': 'application/json' } }
+    )
+  }
+
+  /**
+   * Handle archive-specific requests
+   */
+  private async handleArchiveRequest(request: Request, chainSlug: string): Promise<Response> {
+    const archiveNodes = this.chainData?.archive_nodes || []
+
+    if (archiveNodes.length === 0) {
+      // Fall back to regular nodes - they might work for some requests
+      return this.handleStandardRequest(request, chainSlug)
+    }
+
+    const shuffled = [...archiveNodes].sort(() => 0.5 - Math.random())
+    for (const nodeUrl of shuffled.slice(0, 3)) {
+      const response = await this.proxyRequest(nodeUrl, request.clone())
+      if (response.ok) return response
+    }
+
+    // Fallback to standard nodes
+    return this.handleStandardRequest(request, chainSlug)
+  }
+
+  /**
+   * Handle standard requests
+   */
+  private async handleStandardRequest(request: Request, chainSlug: string): Promise<Response> {
+    const nodes = this.chainData?.nodes || []
+
+    if (nodes.length === 0) {
+      return new Response(
+        JSON.stringify({ error: `No nodes available for ${chainSlug}` }),
+        { status: 503, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const shuffled = [...nodes].sort(() => 0.5 - Math.random())
+    for (const nodeUrl of shuffled.slice(0, 3)) {
+      const response = await this.proxyRequest(nodeUrl, request.clone())
+      if (response.ok) return response
+    }
+
+    return new Response(
+      JSON.stringify({ error: 'All upstream nodes failed' }),
+      { status: 502, headers: { 'Content-Type': 'application/json' } }
     )
   }
 
@@ -115,9 +212,9 @@ export class ChainDO extends DurableObject<Env> {
           id: result.id as number,
           slug: result.slug as string,
           chainId: result.chainId as number,
-          nodes: JSON.parse(result.nodes as string),
-          archive_nodes: JSON.parse(result.archive_nodes as string),
-          mev_protection: result.mev_protection as string | undefined
+          nodes: JSON.parse(result.nodes as string || '[]'),
+          archive_nodes: JSON.parse(result.archive_nodes as string || '[]'),
+          mev_nodes: result.mev_protection ? JSON.parse(result.mev_protection as string) : []
         }
         this.lastSync = now
       } else {
