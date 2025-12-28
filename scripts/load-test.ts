@@ -216,24 +216,26 @@ const RPC_CALLS: RpcCall[] = [
   },
   
   // eth_getLogs with specific block range (cacheable)
+  // Using recent blocks with small range to avoid 413 errors
   { 
     method: "eth_getLogs", 
     params: [{ 
-      fromBlock: "0x10d4f", 
-      toBlock: "0x10d5f",  // Small specific range
+      fromBlock: "0x13D6200",  // Block ~20,800,000
+      toBlock: "0x13D6210",    // +16 blocks
       address: "0xdAC17F958D2ee523a2206206994597C13D831ec7"
     }], 
     cache: "dynamic", 
     desc: "getLogs specific range (cacheable)" 
   },
   
-  // eth_getLogs with 'latest' (volatile)
+  // eth_getLogs with 'latest' - use very recent fromBlock to avoid huge range
   { 
     method: "eth_getLogs", 
     params: [{ 
-      fromBlock: "0x10d4f", 
+      fromBlock: "0x13D6200",  // Recent block
       toBlock: "latest",
-      address: "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+      address: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+      topics: ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"] // Transfer event
     }], 
     cache: "volatile", 
     desc: "getLogs to 'latest' (volatile)" 
