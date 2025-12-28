@@ -65,8 +65,16 @@ export async function handleRequest(
     return response
   }
 
-  //const nodes = CHAIN_NODES[chain as ChainId]
-  const nodes = [env.TEST_NODE]
+  // Use TEST_NODE if available (for development), otherwise use configured chain nodes
+  const testNode = env.TEST_NODE
+
+  let nodes: string[]
+
+  if (testNode) {
+    nodes = [testNode]
+  } else {
+    nodes = CHAIN_NODES[chain as ChainId] || []
+  }
 
   if (!nodes || nodes.length === 0) {
     return createJsonResponse(
@@ -86,9 +94,7 @@ export async function handleRequest(
     nodeUrl = chooseNode(nodes)
   }
 
-  const targetUrl = `${nodeUrl}/${chain}`
-
-  const response = await proxyRequest(targetUrl, request, env.NULLRPC_AUTH)
+  const response = await proxyRequest(nodeUrl, request, env.NULLRPC_AUTH)
 
   // Save to cache if applicable
   if (ctx && cacheKeyUrl && ttl > 0 && response.ok) {
@@ -160,8 +166,9 @@ async function proxyRequest(targetUrl: string, originalRequest: Request, authHea
     // Return the upstream response directly
     // We might want to overwrite headers on the way back too?
     return response
-  } catch (_) {
-    // Fallback error
-    return createJsonResponse({ error: 'Upstream error' }, 502)
+  } catch (e) {
+    // Fallback error with actual message for debugging
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error'
+    return createJsonResponse({ details: errorMessage, error: 'Upstream error' }, 502)
   }
 }
