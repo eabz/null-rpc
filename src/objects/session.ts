@@ -8,7 +8,7 @@ export class UserSession extends DurableObject {
 
   // In-memory state for token bucket algorithm (Rate Limiting)
   private tokens = 0
-  private lastRefill: number = Date.now()
+  private lastRefill = 0 // Start with 0 so first request fills bucket
 
   // Cache for Monthly Usage to avoid reading from disk every request
   private cachedUsage: UserStorageData | null = null

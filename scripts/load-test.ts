@@ -10,8 +10,6 @@ const PLANS = {
   enterprise: "test_enterprise",
 } as const;
 
-type PlanName = keyof typeof PLANS;
-
 async function setupUser(token: string, plan: string) {
   const params = new URLSearchParams({ token, plan });
   const response = await fetch(`${TARGET_URL}/admin/force-plan?${params}`, {
