@@ -168,6 +168,8 @@ export async function handleRequest(
   return response
 }
 
+import { getShardId } from './utils/sharding'
+
 export async function handleAuthenticatedRequest(
   chain: string,
   token: string,
@@ -195,8 +197,9 @@ export async function handleAuthenticatedRequest(
     return createJsonResponse({ error: `Chain ${chain} not supported or no nodes available` }, 404)
   }
 
-  // 1. Get the Global User Registry
-  const id = env.USER_REGISTRY.idFromName('global')
+  // 1. Get the Sharded User Registry
+  const shardId = getShardId(token)
+  const id = env.USER_REGISTRY.idFromName(shardId)
   const registry = env.USER_REGISTRY.get(id)
 
   // 2. Check rate limits (passing the token)

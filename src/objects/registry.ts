@@ -108,7 +108,41 @@ export class UserRegistry extends DurableObject {
 
     // Try load from SQL
     const results = this.sql.exec('SELECT * FROM users WHERE token = ?', token)
-    const record = Array.from(results)[0] as unknown as UserRecord | undefined
+    let record = Array.from(results)[0] as unknown as UserRecord | undefined
+
+    // -------------------------------------------------------------------------
+    // Auto-Seed for Load Testing (Dev/Test Helper)
+    // -------------------------------------------------------------------------
+    if (!record && token.startsWith('user_')) {
+      const planMap: Record<string, PlanType> = {
+        user_business: 'business',
+        user_enterprise: 'enterprise',
+        user_hobbyist: 'hobbyist',
+        user_scaling: 'scaling'
+      }
+
+      if (planMap[token]) {
+        // Auto-create test user
+        const now = Date.now()
+        const plan = planMap[token]
+        // Use a dummy address for auto-created test users
+        const address = `0x_auto_${plan}`
+
+        this.sql.exec(
+          `INSERT INTO users (token, plan, created_at, current_month_requests, month_reset_at, address)
+           VALUES (?, ?, ?, 0, ?, ?)`,
+          token,
+          plan,
+          now,
+          now,
+          address
+        )
+
+        // Fetch again
+        const results = this.sql.exec('SELECT * FROM users WHERE token = ?', token)
+        record = Array.from(results)[0] as unknown as UserRecord | undefined
+      }
+    }
 
     if (!record) {
       return null
