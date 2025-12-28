@@ -36,7 +36,6 @@ export async function handleRequest(
   let cachedResponse: Response | null = null
   let cacheKeyUrl: string | null = null
   let ttl = 0
-  let requestBody: any = null
 
   // clone request to read body
   const requestClone = request.clone()
@@ -44,7 +43,7 @@ export async function handleRequest(
   try {
     if (request.method === 'POST') {
       try {
-        requestBody = await requestClone.json()
+        const requestBody: { method: string; params: any[] } = await requestClone.json()
         // Check if we should cache this method
         if (requestBody?.method) {
           ttl = getCacheTtl(requestBody.method, requestBody.params)
@@ -115,8 +114,8 @@ export async function handleAuthenticatedRequest(
   const id = env.USER_SESSION.idFromName(token)
   const session = env.USER_SESSION.get(id)
 
-  // 2. Check limits and get sticky node
-  const { allowed, reason, nodeIndex } = await session.checkLimit(chain, nodes.length)
+  // 2. Check rate limits
+  const { allowed, reason } = await session.checkLimit()
 
   if (!allowed) {
     const status = reason === 'monthly_limit' ? 402 : 429

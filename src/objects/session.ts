@@ -18,7 +18,7 @@ export class UserSession extends DurableObject {
     this.storage = state.storage
   }
 
-  async checkLimit(chain: string, totalNodes: number): Promise<RateLimitResult> {
+  async checkLimit(): Promise<RateLimitResult> {
     const data = await this.ensureUserData()
     const plan = PLANS[data.plan]
     const now = Date.now()
@@ -55,32 +55,13 @@ export class UserSession extends DurableObject {
     this.tokens -= 1
     data.usage.currentMonthRequestCount += 1
 
-    // 4. Sticky Node Assignment
-    if (!data.stickyNodes) {
-      data.stickyNodes = {}
-    }
-
-    let nodeIndex = data.stickyNodes[chain]
-    if (nodeIndex === undefined) {
-      // Assign a new random node for this user on this chain
-      nodeIndex = Math.floor(Math.random() * totalNodes)
-      data.stickyNodes[chain] = nodeIndex
-    }
-
-    // Persist usage occasionally or on every request?
-    // For "almost 0 latency", we might want to batch this,
-    // but DO writes are fast (coalesced). Let's write for correctness.
-    // Optimization: we could write every N requests or use `waitUntil`.
-    // However, for strict limits, we should ideally write.
-    // Given the request for "almost 0 latency", we will write asynchronously
-    // but keep the latest in memory. This risks losing small counts on crash,
-    // but preserves latency.
-    this.cachedUsage = data // Update cache
+    // Persist usage asynchronously to preserve low latency
+    // This risks losing small counts on crash, but preserves latency
+    this.cachedUsage = data
     this.ctx.waitUntil(this.storage.put('data', data))
 
     return {
       allowed: true,
-      nodeIndex,
       remaining: plan.requestsPerMonth - data.usage.currentMonthRequestCount
     }
   }
