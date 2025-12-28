@@ -1,5 +1,7 @@
 import { handleAuthenticatedRequest, handleRequest, handleRoot, handleStats } from './handlers'
 
+export { UserRegistry } from './objects/registry'
+
 /**
  * High-performance Cloudflare Worker entry point.
  *
@@ -159,8 +161,6 @@ export default {
     return handleAuthenticatedRequest(chain, token, cleanRequest, env, ctx)
   }
 } satisfies ExportedHandler<Env>
-
-export { UserSession } from './objects/session'
 
 async function checkRateLimitAndHandlePublic(
   chain: string,

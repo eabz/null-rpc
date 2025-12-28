@@ -19,7 +19,7 @@
         "namespace_id": "1001",
         "simple": {
           "limit": 20,
-          "period": 1
+          "period": 10
         }
       }
     ]
@@ -27,15 +27,15 @@
   "durable_objects": {
     "bindings": [
       {
-        "name": "USER_SESSION",
-        "class_name": "UserSession"
+        "name": "USER_REGISTRY",
+        "class_name": "UserRegistry"
       }
     ]
   },
   "migrations": [
     {
-      "tag": "v1",
-      "new_classes": ["UserSession"]
+      "tag": "v2",
+      "new_sqlite_classes": ["UserRegistry"]
     }
   ]
 }

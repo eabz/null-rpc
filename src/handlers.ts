@@ -195,12 +195,12 @@ export async function handleAuthenticatedRequest(
     return createJsonResponse({ error: `Chain ${chain} not supported or no nodes available` }, 404)
   }
 
-  // 1. Get the Durable Object stub for this user (token)
-  const id = env.USER_SESSION.idFromName(token)
-  const session = env.USER_SESSION.get(id)
+  // 1. Get the Global User Registry
+  const id = env.USER_REGISTRY.idFromName('global')
+  const registry = env.USER_REGISTRY.get(id)
 
-  // 2. Check rate limits
-  const { allowed, reason } = await session.checkLimit()
+  // 2. Check rate limits (passing the token)
+  const { allowed, reason } = await registry.checkLimit(token)
 
   if (!allowed) {
     const status = reason === 'monthly_limit' ? 402 : 429
