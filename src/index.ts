@@ -1,4 +1,4 @@
-import { handleAuthenticatedRequest, handleRequest, handleRoot } from './handlers'
+import { handleAuthenticatedRequest, handleRequest, handleRoot, handleStats } from './handlers'
 
 /**
  * High-performance Cloudflare Worker entry point.
@@ -6,21 +6,86 @@ import { handleAuthenticatedRequest, handleRequest, handleRoot } from './handler
  * Implements a custom router using manual string parsing instead of `URL.pathname.split('/')`
  * to minimize garbage collection usage on hot paths.
  *
+ * PRIVACY: We immediately strip all Cloudflare user-identifying headers
+ * before processing any request to ensure no user data is leaked to upstream providers.
+ *
  * Routes supported:
  * - `/`                  -> Base health check (root handler)
+ * - `/stats`             -> Public stats endpoint
  * - `/:chain`            -> Public chain access (e.g. /eth, /bsc)
  * - `/:chain/:token`     -> Authenticated access (e.g. /eth/123-abc)
  */
+
+/**
+ * Strip all Cloudflare user-identifying headers from the request.
+ * This ensures we never relay any user data to upstream RPC providers.
+ *
+ * Headers removed:
+ * - cf-connecting-ip: Real client IP
+ * - cf-ipcountry: Client country code
+ * - cf-ray: Cloudflare request ID (can be correlated)
+ * - cf-visitor: Protocol info
+ * - x-forwarded-for: Proxy chain IPs
+ * - x-forwarded-proto: Protocol
+ * - x-real-ip: Real client IP
+ * - true-client-ip: Enterprise real IP
+ */
+function stripPrivacyHeaders(request: Request): Request {
+  const headers = new Headers(request.headers)
+
+  // Remove all Cloudflare user-identifying headers
+  headers.delete('cf-connecting-ip')
+  headers.delete('cf-ipcountry')
+  headers.delete('cf-ray')
+  headers.delete('cf-visitor')
+  headers.delete('cf-region')
+  headers.delete('cf-region-code')
+  headers.delete('cf-metro-code')
+  headers.delete('cf-city')
+  headers.delete('cf-postal-code')
+  headers.delete('cf-latitude')
+  headers.delete('cf-longitude')
+  headers.delete('cf-timezone')
+  headers.delete('x-forwarded-for')
+  headers.delete('x-forwarded-proto')
+  headers.delete('x-real-ip')
+  headers.delete('true-client-ip')
+
+  // Create a new request with cleaned headers
+  return new Request(request.url, {
+    body: request.body,
+    headers,
+    method: request.method,
+    // Preserve other request properties
+    redirect: request.redirect,
+    signal: request.signal
+  })
+}
+
 export default {
   async fetch(request, env, ctx): Promise<Response> {
     const url = new URL(request.url)
     const path = url.pathname
 
     // -------------------------------------------------------------------------
+    // 0. Strip privacy headers IMMEDIATELY before any processing
+    // -------------------------------------------------------------------------
+    // We need the IP for rate limiting before stripping
+    const clientIp = request.headers.get('cf-connecting-ip') || 'unknown'
+
+    // Strip all user-identifying headers from the request
+    const cleanRequest = stripPrivacyHeaders(request)
+
+    // -------------------------------------------------------------------------
     // 1. Fast path for root requests
     // -------------------------------------------------------------------------
     if (path === '/' || path === '') {
       return handleRoot()
+    }
+
+    // Public stats endpoint
+    if (path === '/stats' || path === '/stats/') {
+      return handleStats(env)
     }
 
     // -------------------------------------------------------------------------
@@ -39,7 +104,7 @@ export default {
       const chain = path.slice(start)
       if (!chain) return handleRoot() // Handle "/" strictly if missed fast path
 
-      return checkRateLimitAndHandlePublic(chain, request, env, ctx)
+      return checkRateLimitAndHandlePublic(chain, cleanRequest, clientIp, env, ctx)
     }
 
     // Extract first segment: "chain"
@@ -64,10 +129,10 @@ export default {
       if (!token) {
         // CASE: "/:chain/"
         // Trailing slash after chain means it is still a public request.
-        return checkRateLimitAndHandlePublic(chain, request, env, ctx)
+        return checkRateLimitAndHandlePublic(chain, cleanRequest, clientIp, env, ctx)
       }
 
-      return handleAuthenticatedRequest(chain, token, request, env, ctx)
+      return handleAuthenticatedRequest(chain, token, cleanRequest, env, ctx)
     }
 
     // Extract second segment: "token"
@@ -91,7 +156,7 @@ export default {
 
     // CASE: "/:chain/:token/"
     // Valid authenticated request with trailing slash.
-    return handleAuthenticatedRequest(chain, token, request, env, ctx)
+    return handleAuthenticatedRequest(chain, token, cleanRequest, env, ctx)
   }
 } satisfies ExportedHandler<Env>
 
@@ -100,11 +165,12 @@ export { UserSession } from './objects/session'
 async function checkRateLimitAndHandlePublic(
   chain: string,
   request: Request,
+  clientIp: string,
   env: Env,
   ctx: ExecutionContext
 ): Promise<Response> {
-  const ip = request.headers.get('cf-connecting-ip') || 'unknown'
-  const { success } = await env.RATE_LIMITER.limit({ key: ip })
+  // Use the pre-extracted IP since headers have been stripped from request
+  const { success } = await env.RATE_LIMITER.limit({ key: clientIp })
 
   if (!success) {
     return new Response('Rate Limit Exceeded', { status: 429 })

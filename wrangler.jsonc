@@ -5,6 +5,12 @@
   "observability": {
     "enabled": false
   },
+  "analytics_engine_datasets": [
+    {
+      "binding": "ANALYTICS",
+      "dataset": "nullrpc_metrics"
+    }
+  ],
   "unsafe": {
     "bindings": [
       {

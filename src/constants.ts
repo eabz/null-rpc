@@ -19,3 +19,7 @@ export const CHAIN_NODES: Record<ChainId, string[]> = {
     'https://ethereum-mainnet.gateway.tatum.io'
   ]
 }
+
+export const MEV_PROTECTION: Record<ChainId, string> = {
+  eth: 'https://rpc.mevblocker.io/fullprivacy'
+}
