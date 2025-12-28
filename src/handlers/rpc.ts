@@ -1,17 +1,9 @@
-import { CHAIN_NODES, type ChainId, MEV_PROTECTION, PUBLIC_NODES } from '@/constants'
 import { cacheResponse, calculateCacheKey, getCachedResponse, getCacheTtl } from '@/services'
 import type { AnalyticsData } from '@/types'
 import { createJsonResponse, getContentLength, trackRequest } from '@/utils'
 
-// Global round-robin counter for node selection
-let roundRobinIndex = 0
+// Global round-robin is now handled by DO or per-request within DO
 
-// True Round-Robin: cycles through nodes in order
-function chooseNode(nodes: string[]): string {
-  const index = roundRobinIndex % nodes.length
-  roundRobinIndex++
-  return nodes[index]
-}
 
 export async function handleRequest(
   chain: string,
@@ -85,86 +77,23 @@ export async function handleRequest(
     return response
   }
 
-  const nodes: string[] = CHAIN_NODES[chain as ChainId] || []
+  const id = env.CHAIN_DO.idFromName(chain)
+  const stub = env.CHAIN_DO.get(id)
 
-  if (!nodes || nodes.length === 0) {
-    const response = createJsonResponse({ error: `Chain ${chain} not supported or no nodes available` }, 404)
-    errorType = 'chain_not_found'
-
-    // Track error response
-    if (ctx) {
-      trackRequest(env, ctx, {
-        cacheStatus,
-        chain,
-        errorType,
-        latencyMs: performance.now() - startTime,
-        method,
-        requestSize,
-        statusCode: 404
-      })
-    }
-
-    return response
-  }
-
-  // Choose endpoint: Use MEV protection for eth_sendRawTransaction
-  let nodeUrl: string
-  const mevEndpoint = MEV_PROTECTION[chain as ChainId]
-  let isMevProtection = false
-
-  if (method === 'eth_sendRawTransaction' && mevEndpoint) {
-    // Route transaction submissions through MEV protection
-    nodeUrl = mevEndpoint
-    isMevProtection = true
-  } else {
-    // Normal round-robin for other methods
-    nodeUrl = chooseNode(nodes)
-  }
-
-  // Attempt 1: Primary Node
-  let response = await proxyRequest(nodeUrl, request.clone())
-
-  // Retry Logic
-  // If failed AND not MEV protection (fail fast for MEV to avoid accidental public broadcast)
-  if (!response.ok && !isMevProtection) {
-    const publicNodes = PUBLIC_NODES[chain as ChainId] || []
-
-    // We try up to 5 times with random public nodes
-    const maxRetries = 5
-    let attempts = 0
-
-    while (!response.ok && attempts < maxRetries && publicNodes.length > 0) {
-      attempts++
-      const randomNode = publicNodes[Math.floor(Math.random() * publicNodes.length)]
-      // console.log(`Retry ${attempts}/${maxRetries} using ${randomNode}`)
-
-      response = await proxyRequest(randomNode, request.clone())
-
-      if (response.ok) {
-        break
-      }
-    }
-  }
+  const response = await stub.fetch(request.clone())
 
   // Get response size for analytics
   const responseSize = getContentLength(response.headers)
 
-  // Check for upstream errors (final status)
-  if (!response.ok) {
-    errorType = `upstream_${response.status}`
-  }
-
-  // Save to cache if applicable
-  if (ctx && cacheKeyUrl && ttl > 0 && response.ok) {
-    ctx.waitUntil(cacheResponse(cacheKeyUrl, response, ttl, ctx))
-  }
-
   // Track the request
   if (ctx) {
+     const successful = response.ok
+     const finalError = successful ? undefined : 'opt_failed' // Or parse error
+
     trackRequest(env, ctx, {
       cacheStatus: cacheStatus === 'HIT' ? 'HIT' : ttl > 0 ? 'MISS' : 'BYPASS',
       chain,
-      errorType,
+      errorType: successful ? undefined : `upstream_${response.status}`,
       latencyMs: performance.now() - startTime,
       method,
       requestSize,
@@ -173,31 +102,14 @@ export async function handleRequest(
     })
   }
 
+  // Save to cache if applicable
+  if (ctx && cacheKeyUrl && ttl > 0 && response.ok) {
+        // Warning: Respone body might be consumed?
+        // DO fetch returns a new Response, but we should double check if cloning is needed for caching
+        ctx.waitUntil(cacheResponse(cacheKeyUrl, response.clone(), ttl, ctx))
+  }
+
   return response
 }
 
-async function proxyRequest(targetUrl: string, originalRequest: Request): Promise<Response> {
-  // We strictly only forward POST for RPC usually, but generic proxying:
-  // We Clone the method and body.
-  // We strip headers to ensure privacy, only sending essential ones.
 
-  try {
-    const cleanHeaders = new Headers()
-    cleanHeaders.set('Content-Type', 'application/json')
-    cleanHeaders.set('Accept', 'application/json')
-
-    const response = await fetch(targetUrl, {
-      body: originalRequest.body,
-      headers: cleanHeaders,
-      method: originalRequest.method
-    })
-
-    // Return the upstream response directly
-    // We might want to overwrite headers on the way back too?
-    return response
-  } catch (e) {
-    // Fallback error with actual message for debugging
-    const errorMessage = e instanceof Error ? e.message : 'Unknown error'
-    return createJsonResponse({ details: errorMessage, error: 'Upstream error' }, 502)
-  }
-}

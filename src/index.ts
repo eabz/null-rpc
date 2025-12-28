@@ -1,5 +1,7 @@
 import { handleRequest, handleRoot } from '@/handlers'
 
+export { ChainDO } from './objects/chain'
+
 /**
  * High-performance Cloudflare Worker entry point.
  *

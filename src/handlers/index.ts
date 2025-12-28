@@ -1,2 +1,2 @@
 export { handleRoot } from './root'
-export { handleAuthenticatedRequest, handleRequest } from './rpc'
+export { handleRequest } from './rpc'
