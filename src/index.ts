@@ -79,10 +79,23 @@ export default {
     const cleanRequest = stripPrivacyHeaders(request)
 
     // -------------------------------------------------------------------------
-    // 1. Fast path for root requests
+    // 1. Static assets - let Cloudflare handle them
     // -------------------------------------------------------------------------
-    if (path === '/' || path === '') {
-      return handleRoot()
+    // Files with extensions (e.g., .png, .ico, .html) are handled by Cloudflare's assets
+    const lastSegment = path.split('/').pop() || ''
+    const hasExtension = lastSegment.includes('.')
+    
+    if (hasExtension || path === '/' || path === '') {
+      // For root URL, the assets config will serve index.html
+      // For files, assets config serves from public/
+      const assets = (env as unknown as { ASSETS?: { fetch: (req: Request) => Promise<Response> } }).ASSETS
+      if (assets) {
+        return assets.fetch(request)
+      }
+      // Fallback if no assets binding (local dev without assets)
+      if (path === '/' || path === '') {
+        return handleRoot()
+      }
     }
 
     // -------------------------------------------------------------------------

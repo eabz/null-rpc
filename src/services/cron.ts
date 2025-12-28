@@ -235,14 +235,15 @@ export async function syncPublicNodes(env: Env): Promise<void> {
     const chains = await fetchChainlist()
     console.log(`[Cron] Fetched ${chains.length} chains from chainlist`)
 
-    // Filter to valid mainnet chains with TVL data
+    // Filter to valid mainnet chains with TVL data and enough RPCs
     const validChains = chains
       .filter((chainEntry) => {
         if (!chainEntry.shortName) return false
         const isTestnet = (chainEntry as { isTestnet?: boolean }).isTestnet === true
         if (isTestnet) return false
         const rpcUrls = extractRpcUrls(chainEntry)
-        if (rpcUrls.length === 0) return false
+        // Must have more than 5 RPC endpoints to filter out small/unused chains
+        if (rpcUrls.length <= 5) return false
         // Must have TVL data
         const tvl = (chainEntry as { tvl?: number }).tvl
         return typeof tvl === 'number' && tvl > 0

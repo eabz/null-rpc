@@ -2,6 +2,9 @@
   "name": "null-rpc",
   "main": "src/index.ts",
 	"compatibility_date": "2025-12-25",
+  "assets": {
+    "directory": "./public"
+  },
   "observability": {
     "enabled": false
   },
@@ -46,6 +49,6 @@
     }
   ],
   "triggers": {
-    "crons": ["0 * * * *"]
+    "crons": ["* * * * *"]
   }
 }

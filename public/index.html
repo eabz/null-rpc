@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NullRPC - High-Performance RPC for EVM chains</title>
+  <meta name="description" content="Free, privacy-focused RPC endpoints for EVM chains. No IP logging. No tracking.">
+  
+  <!-- Favicons -->
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --null-black: #050510;
+      --ether-blue: #007AFF;
+      --cyan-ray: #00D4FF;
+      --status-green: #00FF94;
+      --terminal-grey: #8F9CA9;
+      --white: #FFFFFF;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--null-black);
+      color: var(--terminal-grey);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Header */
+    header {
+      padding: 24px 0;
+      border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+    }
+
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      height: 40px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 32px;
+    }
+
+    .nav-links a {
+      color: var(--terminal-grey);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--cyan-ray);
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 120px 0;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(0, 122, 255, 0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-logo {
+      width: 120px;
+      height: 120px;
+      margin-bottom: 32px;
+      position: relative;
+    }
+
+    .hero h1 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 64px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      position: relative;
+    }
+
+    .hero h1 .null {
+      color: var(--ether-blue);
+    }
+
+    .hero h1 .rpc {
+      color: var(--white);
+    }
+
+    .hero .tagline {
+      font-size: 24px;
+      color: var(--terminal-grey);
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    .hero .subtitle {
+      font-size: 18px;
+      color: var(--terminal-grey);
+      opacity: 0.7;
+      margin-bottom: 48px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      position: relative;
+    }
+
+    .endpoint-box {
+      background: rgba(0, 212, 255, 0.05);
+      border: 1px solid rgba(0, 212, 255, 0.2);
+      border-radius: 12px;
+      padding: 24px 32px;
+      display: inline-flex;
+      align-items: center;
+      gap: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      position: relative;
+    }
+
+    .endpoint-box code {
+      color: var(--cyan-ray);
+      font-size: 18px;
+    }
+
+    .copy-btn {
+      background: var(--ether-blue);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    .copy-btn:hover {
+      background: var(--cyan-ray);
+    }
+
+    /* Features */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 32px;
+      padding: 80px 0;
+    }
+
+    .feature {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(0, 212, 255, 0.1);
+      border-radius: 16px;
+      padding: 32px;
+      transition: border-color 0.2s;
+    }
+
+    .feature:hover {
+      border-color: rgba(0, 212, 255, 0.3);
+    }
+
+    .feature-icon {
+      font-size: 32px;
+      margin-bottom: 16px;
+    }
+
+    .feature h3 {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--white);
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+
+    .feature p {
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    /* Chains Section */
+    .chains-section {
+      padding: 80px 0;
+      border-top: 1px solid rgba(0, 212, 255, 0.1);
+    }
+
+    .section-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 36px;
+      color: var(--white);
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .section-subtitle {
+      text-align: center;
+      margin-bottom: 48px;
+      opacity: 0.7;
+    }
+
+    .chains-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .chain-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(0, 212, 255, 0.1);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: all 0.2s;
+    }
+
+    .chain-card:hover {
+      border-color: var(--ether-blue);
+      transform: translateY(-2px);
+    }
+
+    .chain-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--ether-blue), var(--cyan-ray));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: white;
+      font-size: 18px;
+    }
+
+    .chain-info h4 {
+      color: var(--white);
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    .chain-info .endpoint {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--cyan-ray);
+    }
+
+    .chain-stats {
+      margin-left: auto;
+      display: flex;
+      gap: 12px;
+    }
+
+    .chain-stat {
+      text-align: center;
+    }
+
+    .chain-stat .count {
+      color: var(--status-green);
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .chain-stat .count.archive {
+      color: var(--cyan-ray);
+    }
+
+    .chain-stat .count.mev {
+      color: var(--ether-blue);
+    }
+
+    .chain-stats .label {
+      font-size: 10px;
+      opacity: 0.6;
+    }
+
+    /* Analytics Section */
+    .analytics-section {
+      padding: 80px 0;
+      border-top: 1px solid rgba(0, 212, 255, 0.1);
+    }
+
+    .analytics-controls {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .chain-select {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(0, 212, 255, 0.2);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: var(--white);
+      font-size: 14px;
+      min-width: 200px;
+      cursor: pointer;
+    }
+
+    .chain-select:focus {
+      outline: none;
+      border-color: var(--ether-blue);
+    }
+
+    .analytics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+      margin-bottom: 48px;
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(0, 212, 255, 0.1);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 32px;
+      color: var(--white);
+      font-weight: 700;
+    }
+
+    .stat-label {
+      font-size: 14px;
+      margin-top: 8px;
+      opacity: 0.7;
+    }
+
+    .chart-container {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(0, 212, 255, 0.1);
+      border-radius: 16px;
+      padding: 32px;
+    }
+
+    .chart-title {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--white);
+      font-size: 18px;
+      margin-bottom: 24px;
+    }
+
+    .chart-wrapper {
+      position: relative;
+      height: 300px;
+      width: 100%;
+    }
+
+    #requestsChart {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    /* Footer */
+    footer {
+      padding: 48px 0;
+      border-top: 1px solid rgba(0, 212, 255, 0.1);
+      margin-top: 80px;
+    }
+
+    .footer-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .footer-logo {
+      height: 32px;
+    }
+
+    .footer-text {
+      font-size: 14px;
+      opacity: 0.7;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 24px;
+    }
+
+    .footer-links a {
+      color: var(--terminal-grey);
+      text-decoration: none;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover {
+      color: var(--cyan-ray);
+    }
+
+    .footer-links svg {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+    }
+
+    /* Loading spinner */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 200px;
+      grid-column: 1 / -1;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(0, 212, 255, 0.2);
+      border-top-color: var(--cyan-ray);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero h1 {
+        font-size: 36px;
+      }
+
+      .features {
+        grid-template-columns: 1fr;
+      }
+
+      .analytics-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .footer-content {
+        flex-direction: column;
+        gap: 24px;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container header-content">
+      <img src="/logo-squared.png" alt="NullRPC" class="logo">
+      <nav class="nav-links">
+        <a href="#chains">Chains</a>
+        <a href="#analytics">Analytics</a>
+        <a href="https://github.com/eabz/null-rpc" target="_blank">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="container">
+        <h1><span class="null">null</span><span class="rpc">rpc</span></h1>
+        <p class="tagline">Privacy-Focused, Zero-Log RPC Proxy</p>
+        <p class="subtitle">Free RPC endpoints for EVM chains. No IP logging. No tracking.</p>
+        
+        <div class="endpoint-box">
+          <code>https://nullrpc.dev/eth</code>
+          <button class="copy-btn" onclick="copyEndpoint()">Copy</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section class="container">
+      <div class="features">
+        <div class="feature">
+          <div class="feature-icon">⚡</div>
+          <h3>Lightning Fast</h3>
+          <p>Global edge network with intelligent caching. Sub-50ms response times for cached requests.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">🔒</div>
+          <h3>Privacy First</h3>
+          <p>No IP logging. No tracking. Your transactions are your business.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">🛡️</div>
+          <h3>MEV Protection</h3>
+          <p>Automatic MEV protection for Ethereum transactions. Route through private mempools.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Chains Section -->
+    <section id="chains" class="chains-section">
+      <div class="container">
+        <h2 class="section-title">Supported Chains</h2>
+        <p class="section-subtitle">50+ EVM chains with validated, healthy RPC nodes</p>
+        
+        <div class="chains-grid" id="chainsGrid">
+          <div class="loading"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Analytics Section -->
+    <section id="analytics" class="analytics-section">
+      <div class="container">
+        <h2 class="section-title">Live Analytics</h2>
+        <p class="section-subtitle">Real-time metrics from our network</p>
+
+        <div class="analytics-controls">
+          <select class="chain-select" id="chainSelect">
+            <option value="all">All Chains</option>
+          </select>
+        </div>
+
+        <div class="analytics-grid" id="statsGrid">
+          <div class="stat-card">
+            <div class="stat-value" id="totalRequests">-</div>
+            <div class="stat-label">Requests (24h)</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="avgLatency">-</div>
+            <div class="stat-label">Avg Latency</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="cacheHitRate">-</div>
+            <div class="stat-label">Cache Hit Rate</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="errorRate">-</div>
+            <div class="stat-label">Error Rate</div>
+          </div>
+        </div>
+
+        <div class="chart-container">
+          <h3 class="chart-title">Requests per Hour</h3>
+          <div class="chart-wrapper">
+            <canvas id="requestsChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-content">
+      <div class="footer-left">
+        <img src="/logo-squared.png" alt="NullRPC" class="footer-logo">
+        <span class="footer-text">© 2025 NullRPC</span>
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/eabz/null-rpc" target="_blank">
+          <svg viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          GitHub
+        </a>
+        <a href="https://x.com/0xeabz" target="_blank">
+          <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          @0xeabz
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <script>
+    // Copy endpoint to clipboard
+    function copyEndpoint() {
+      navigator.clipboard.writeText('https://nullrpc.dev/eth');
+      const btn = document.querySelector('.copy-btn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 2000);
+    }
+
+    // Fetch chains data
+    async function loadChains() {
+      try {
+        const res = await fetch('/chains');
+        const data = await res.json();
+        
+        const grid = document.getElementById('chainsGrid');
+        const select = document.getElementById('chainSelect');
+        
+        if (data.chains && data.chains.length > 0) {
+          grid.innerHTML = data.chains.map(chain => `
+            <div class="chain-card">
+              <div class="chain-icon">${chain.slug.slice(0, 2).toUpperCase()}</div>
+              <div class="chain-info">
+                <h4>${chain.slug}</h4>
+                <span class="endpoint">nullrpc.dev/${chain.slug}</span>
+              </div>
+              <div class="chain-stats">
+                <div class="chain-stat">
+                  <div class="count">${chain.nodes}</div>
+                  <div class="label">nodes</div>
+                </div>
+                <div class="chain-stat">
+                  <div class="count archive">${chain.archiveNodes || 0}</div>
+                  <div class="label">archive</div>
+                </div>
+                <div class="chain-stat">
+                  <div class="count mev">${chain.mevNodes || 0}</div>
+                  <div class="label">mev</div>
+                </div>
+              </div>
+            </div>
+          `).join('');
+
+          // Populate select
+          data.chains.forEach(chain => {
+            const opt = document.createElement('option');
+            opt.value = chain.slug;
+            opt.textContent = chain.slug;
+            select.appendChild(opt);
+          });
+        } else {
+          grid.innerHTML = '<p style="text-align: center; opacity: 0.5;">No chains available yet. Run the cron job to sync.</p>';
+        }
+      } catch (e) {
+        console.error('Failed to load chains:', e);
+        document.getElementById('chainsGrid').innerHTML = '<p style="text-align: center; opacity: 0.5;">Failed to load chains</p>';
+      }
+    }
+
+    // Fetch analytics data
+    async function loadAnalytics() {
+      try {
+        const res = await fetch('/analytics');
+        const data = await res.json();
+
+        // Overview stats
+        if (data.overview && data.overview[0]) {
+          const ov = data.overview[0];
+          document.getElementById('totalRequests').textContent = formatNumber(ov.total_requests || 0);
+          document.getElementById('avgLatency').textContent = (ov.avg_latency_ms || 0).toFixed(0) + 'ms';
+          
+          const cacheRate = ov.cache_hits / (ov.total_requests || 1) * 100;
+          document.getElementById('cacheHitRate').textContent = cacheRate.toFixed(1) + '%';
+          
+          const errorRate = ov.errors / (ov.total_requests || 1) * 100;
+          document.getElementById('errorRate').textContent = errorRate.toFixed(2) + '%';
+        }
+
+        // Chart
+        if (data.timeseries && data.timeseries.length > 0) {
+          renderChart(data.timeseries);
+        }
+      } catch (e) {
+        console.error('Failed to load analytics:', e);
+      }
+    }
+
+    function formatNumber(num) {
+      if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+      if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+      return num.toString();
+    }
+
+    // Store chart instance globally to destroy before recreating
+    let requestsChartInstance = null;
+
+    function renderChart(timeseries) {
+      const canvas = document.getElementById('requestsChart');
+      
+      // Destroy existing chart if it exists (handles hot reload)
+      const existingChart = Chart.getChart(canvas);
+      if (existingChart) {
+        existingChart.destroy();
+      }
+
+      // Aggregate by hour
+      const hourlyData = {};
+      timeseries.forEach(item => {
+        if (!hourlyData[item.hour]) {
+          hourlyData[item.hour] = 0;
+        }
+        hourlyData[item.hour] += item.requests;
+      });
+
+      const labels = Object.keys(hourlyData).sort().slice(-24);
+      const values = labels.map(h => hourlyData[h]);
+
+      const ctx = canvas.getContext('2d');
+      requestsChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels.map(h => {
+            const date = new Date(h);
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          }),
+          datasets: [{
+            label: 'Requests',
+            data: values,
+            borderColor: '#00D4FF',
+            backgroundColor: 'rgba(0, 212, 255, 0.1)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 3,
+            pointBackgroundColor: '#00D4FF'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: '#8F9CA9' }
+            },
+            y: {
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: '#8F9CA9' },
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    // Load data on page load
+    loadChains();
+    loadAnalytics();
+  </script>
+</body>
+</html>

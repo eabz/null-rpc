@@ -1,7 +1,7 @@
 import { sleep } from "bun";
 
 // Default to 8788 as per recent wrangler output, but allow override
-const TARGET_URL = process.env.TARGET_URL || "http://localhost:8787";
+const TARGET_URL = "https://nullrpc.dev"
 
 // Cache categories matching cache.ts logic
 type CacheCategory = "static" | "volatile" | "dynamic" | "never";

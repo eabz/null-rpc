@@ -32,7 +32,7 @@ const QUERIES = {
     FROM nullrpc_metrics
     WHERE timestamp > NOW() - INTERVAL '24' HOUR
     AND index1 = 'rpc_requests'
-    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%' AND blob1 NOT LIKE '%\\%%'
+    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%'
   `,
 
   // Stats per chain
@@ -46,7 +46,7 @@ const QUERIES = {
     FROM nullrpc_metrics
     WHERE timestamp > NOW() - INTERVAL '24' HOUR
     AND index1 = 'rpc_requests'
-    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%' AND blob1 NOT LIKE '%\\%%'
+    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%'
     GROUP BY blob1
     ORDER BY requests DESC
     LIMIT 50
@@ -62,7 +62,7 @@ const QUERIES = {
     FROM nullrpc_metrics
     WHERE timestamp > NOW() - INTERVAL '24' HOUR
     AND index1 = 'rpc_requests'
-    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%' AND blob1 NOT LIKE '%\\%%'
+    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%'
     AND blob2 != 'unknown'
     GROUP BY blob1, blob2
     ORDER BY count DESC
@@ -81,7 +81,7 @@ const QUERIES = {
     FROM nullrpc_metrics
     WHERE timestamp > NOW() - INTERVAL '24' HOUR
     AND index1 = 'rpc_requests'
-    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%' AND blob1 NOT LIKE '%\\%%'
+    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%'
     GROUP BY hour, blob1
     ORDER BY hour DESC
     LIMIT 500
@@ -96,7 +96,7 @@ const QUERIES = {
     FROM nullrpc_metrics
     WHERE timestamp > NOW() - INTERVAL '24' HOUR
     AND index1 = 'rpc_requests'
-    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%' AND blob1 NOT LIKE '%\\%%'
+    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%'
     GROUP BY blob1, blob3
     ORDER BY count DESC
   `,
@@ -111,7 +111,7 @@ const QUERIES = {
     FROM nullrpc_metrics
     WHERE timestamp > NOW() - INTERVAL '24' HOUR
     AND index1 = 'rpc_requests'
-    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%' AND blob1 NOT LIKE '%\\%%'
+    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%'
     AND double6 > 0
     GROUP BY blob1, blob4, blob5
     ORDER BY count DESC
@@ -128,7 +128,7 @@ const QUERIES = {
     FROM nullrpc_metrics
     WHERE timestamp > NOW() - INTERVAL '24' HOUR
     AND index1 = 'rpc_requests'
-    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%' AND blob1 NOT LIKE '%\\%%'
+    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%'
     AND blob2 != 'unknown'
     GROUP BY hour, blob1, blob2
     ORDER BY hour DESC, count DESC
