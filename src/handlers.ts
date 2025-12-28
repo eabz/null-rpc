@@ -203,6 +203,10 @@ export async function handleAuthenticatedRequest(
   const { allowed, reason } = await registry.checkLimit(token)
 
   if (!allowed) {
+    if (reason === 'user_not_found') {
+      return createJsonResponse({ error: 'User not found' }, 404)
+    }
+
     const status = reason === 'monthly_limit' ? 402 : 429
     const errorType = reason === 'monthly_limit' ? 'monthly_limit_exceeded' : 'rate_limit_exceeded'
 
