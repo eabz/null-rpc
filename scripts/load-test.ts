@@ -2,15 +2,15 @@ import { sleep } from "bun";
 
 const TARGET_URL = process.env.TARGET_URL || "http://localhost:8787";
 
-// Use unique tokens for each test run to avoid DO state carryover
-const RUN_ID = Date.now().toString(36);
+// Use fixed tokens created manually in the database
+const RUN_ID = "manual";
 
 // Test tokens for each plan tier
 const PLANS = {
-  hobbyist: `test_hobbyist_${RUN_ID}`,
-  scaling: `test_scaling_${RUN_ID}`,
-  business: `test_business_${RUN_ID}`,
-  enterprise: `test_enterprise_${RUN_ID}`,
+  hobbyist: "user_hobbyist",
+  scaling: "user_scaling",
+  business: "user_business",
+  enterprise: "user_enterprise",
 } as const;
 
 // Plan rate limits for reference
@@ -311,15 +311,6 @@ function formatStats(stats: TestStats): string {
     : 0;
   
   return `Total: ${total} | ✅ ${stats.success} | 🚫 ${stats.limited} 429s | ❌ ${stats.errors} errors | ⚡ Avg: ${avgLatency}ms P95: ${p95}ms | Cache: ${stats.cacheHits} HITs / ${stats.cacheMisses} MISSes`;
-}
-
-async function setupUser(token: string, plan: string) {
-  const params = new URLSearchParams({ token, plan });
-  const response = await fetch(`${TARGET_URL}/admin/force-plan?${params}`, { method: "POST" });
-  if (!response.ok) {
-    throw new Error(`Failed to set plan for ${token}: ${await response.text()}`);
-  }
-  console.log(`  ✓ User ${token.substring(0, 20)}... → ${plan}`);
 }
 
 async function makeRpcRequest(
@@ -694,14 +685,9 @@ async function main() {
   console.log("");
 
   // Setup
-  console.log("📋 Setup: Configuring test users...");
-  for (const [plan, token] of Object.entries(PLANS)) {
-    try {
-      await setupUser(token, plan);
-    } catch (e) {
-      console.warn(`   ⚠️ Setup failed for ${plan} - assuming admin route disabled`);
-    }
-  }
+  console.log("📋 Setup: Using manual test users (ensure they exist in DB)...");
+  // We assume users are already created via SQL
+  // (admin endpoints were removed)
 
   const results: { test: string; passed: boolean }[] = [];
 
