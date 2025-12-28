@@ -151,11 +151,13 @@ async function makeRpcRequest(
   verboseError = false
 ): Promise<void> {
   const start = Date.now();
+  const requestId = stats.success + stats.errors + stats.limited + 1;
+  
   try {
     const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: stats.success, method, params }),
+      body: JSON.stringify({ jsonrpc: "2.0", id: requestId, method, params }),
     });
     
     const latency = Date.now() - start;
@@ -163,22 +165,75 @@ async function makeRpcRequest(
 
     if (res.status === 429) {
       stats.limited++;
-    } else if (res.ok) {
-      stats.success++;
-      if (trackCache) {
-        const cacheHeader = res.headers.get("X-NullRPC-Cache");
-        if (cacheHeader === "HIT") stats.cacheHits++;
-        else stats.cacheMisses++;
-      }
-    } else {
+      return;
+    }
+    
+    if (!res.ok) {
       stats.errors++;
       if (verboseError) {
-        console.log(`Error ${res.status}: ${await res.text()}`);
+        console.log(`HTTP Error ${res.status}: ${await res.text()}`);
       }
+      return;
+    }
+
+    // Parse and validate JSON-RPC response
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch {
+      stats.errors++;
+      if (verboseError) {
+        console.log(`Invalid JSON response for ${method}`);
+      }
+      return;
+    }
+
+    // Validate JSON-RPC structure
+    const rpcResponse = body as { 
+      jsonrpc?: string; 
+      id?: number; 
+      result?: unknown; 
+      error?: { code?: number; message?: string } 
+    };
+
+    // Check jsonrpc version
+    if (rpcResponse.jsonrpc !== "2.0") {
+      stats.errors++;
+      if (verboseError) {
+        console.log(`Invalid jsonrpc version for ${method}: ${rpcResponse.jsonrpc}`);
+      }
+      return;
+    }
+
+    // Check for RPC error (these are valid responses, but indicate upstream issues)
+    if (rpcResponse.error) {
+      stats.errors++;
+      if (verboseError) {
+        console.log(`RPC Error for ${method}: ${rpcResponse.error.code} - ${rpcResponse.error.message}`);
+      }
+      return;
+    }
+
+    // Check that we got a result (null is valid for some methods)
+    if (!("result" in rpcResponse)) {
+      stats.errors++;
+      if (verboseError) {
+        console.log(`No result field for ${method}`);
+      }
+      return;
+    }
+
+    // Valid response!
+    stats.success++;
+    
+    if (trackCache) {
+      const cacheHeader = res.headers.get("X-NullRPC-Cache");
+      if (cacheHeader === "HIT") stats.cacheHits++;
+      else stats.cacheMisses++;
     }
   } catch (e) {
     stats.errors++;
-    if (verboseError) console.error(e);
+    if (verboseError) console.error(`Network error for ${method}:`, e);
   }
 }
 

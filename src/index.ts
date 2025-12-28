@@ -1,4 +1,4 @@
-import { handleChains, handleRequest, handleRoot } from '@/handlers'
+import { handleAnalytics, handleChains, handleRequest, handleRoot } from '@/handlers'
 import { syncPublicNodes } from '@/services'
 
 export { ChainDO } from './objects/chain'
@@ -90,6 +90,13 @@ export default {
     // -------------------------------------------------------------------------
     if (path === '/chains') {
       return handleChains(env)
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. Analytics endpoint
+    // -------------------------------------------------------------------------
+    if (path.startsWith('/analytics')) {
+      return handleAnalytics(request, env)
     }
 
     // -------------------------------------------------------------------------
