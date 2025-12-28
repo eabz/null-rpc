@@ -1,4 +1,4 @@
-import { CHAIN_NODES, type ChainId, MEV_PROTECTION } from '@/constants'
+import { CHAIN_NODES, type ChainId, MEV_PROTECTION, PUBLIC_NODES } from '@/constants'
 import { cacheResponse, calculateCacheKey, getCachedResponse, getCacheTtl } from '@/services'
 import type { AnalyticsData } from '@/types'
 import { createJsonResponse, getContentLength, trackRequest } from '@/utils'
@@ -35,12 +35,13 @@ export async function handleRequest(
   let ttl = 0
 
   // Clone request to read body
-  const requestClone = request.clone()
+  // We need multiple clones for retries
+  const requestBodyClone = request.clone()
 
   try {
     if (request.method === 'POST') {
       try {
-        const bodyText = await requestClone.text()
+        const bodyText = await requestBodyClone.text()
         requestSize = bodyText.length
 
         const requestBody: { method: string; params: unknown[] } = JSON.parse(bodyText)
@@ -115,21 +116,46 @@ export async function handleRequest(
   // Choose endpoint: Use MEV protection for eth_sendRawTransaction
   let nodeUrl: string
   const mevEndpoint = MEV_PROTECTION[chain as ChainId]
+  let isMevProtection = false
 
   if (method === 'eth_sendRawTransaction' && mevEndpoint) {
     // Route transaction submissions through MEV protection
     nodeUrl = mevEndpoint
+    isMevProtection = true
   } else {
     // Normal round-robin for other methods
     nodeUrl = chooseNode(nodes)
   }
 
-  const response = await proxyRequest(nodeUrl, request, env.NULLRPC_AUTH)
+  // Attempt 1: Primary Node
+  let response = await proxyRequest(nodeUrl, request.clone(), env.NULLRPC_AUTH)
+
+  // Retry Logic
+  // If failed AND not MEV protection (fail fast for MEV to avoid accidental public broadcast)
+  if (!response.ok && !isMevProtection) {
+    const publicNodes = PUBLIC_NODES[chain as ChainId] || []
+
+    // We try up to 5 times with random public nodes
+    const maxRetries = 5
+    let attempts = 0
+
+    while (!response.ok && attempts < maxRetries && publicNodes.length > 0) {
+      attempts++
+      const randomNode = publicNodes[Math.floor(Math.random() * publicNodes.length)]
+      // console.log(`Retry ${attempts}/${maxRetries} using ${randomNode}`)
+
+      response = await proxyRequest(randomNode, request.clone(), env.NULLRPC_AUTH)
+
+      if (response.ok) {
+        break
+      }
+    }
+  }
 
   // Get response size for analytics
   const responseSize = getContentLength(response.headers)
 
-  // Check for upstream errors
+  // Check for upstream errors (final status)
   if (!response.ok) {
     errorType = `upstream_${response.status}`
   }
