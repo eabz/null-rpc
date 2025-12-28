@@ -221,52 +221,80 @@ async function storeChainData(
     .bind(slug, chainId, nodesJson, archiveNodesJson, mevNodesJson)
     .run()
 }
+
 /**
- * Main sync function - fetches, validates, and stores public nodes
+ * Main sync function - validates and stores top 20 chains by TVL
  */
 export async function syncPublicNodes(env: Env): Promise<void> {
   console.log('[Cron] Starting public node sync...')
+
+  const TOP_CHAINS_COUNT = 50
 
   try {
     // Fetch all chains from chainlist
     const chains = await fetchChainlist()
     console.log(`[Cron] Fetched ${chains.length} chains from chainlist`)
 
-    // Process chains SEQUENTIALLY to avoid hitting connection limits
-    for (const [slug, expectedChainId] of Object.entries(TARGET_CHAINS)) {
-      const chainEntry = chains.find((c) => c.chainId === expectedChainId)
+    // Filter to valid mainnet chains with TVL data
+    const validChains = chains
+      .filter((chainEntry) => {
+        if (!chainEntry.shortName) return false
+        const isTestnet = (chainEntry as { isTestnet?: boolean }).isTestnet === true
+        if (isTestnet) return false
+        const rpcUrls = extractRpcUrls(chainEntry)
+        if (rpcUrls.length === 0) return false
+        // Must have TVL data
+        const tvl = (chainEntry as { tvl?: number }).tvl
+        return typeof tvl === 'number' && tvl > 0
+      })
+      // Sort by TVL descending
+      .sort((a, b) => {
+        const tvlA = (a as { tvl?: number }).tvl || 0
+        const tvlB = (b as { tvl?: number }).tvl || 0
+        return tvlB - tvlA
+      })
+      // Take top N
+      .slice(0, TOP_CHAINS_COUNT)
 
-      if (!chainEntry) {
-        console.log(`[Cron] Chain ${slug} (${expectedChainId}) not found in chainlist`)
-        continue
-      }
+    console.log(`[Cron] Processing top ${validChains.length} chains by TVL`)
 
-      // Extract RPC URLs
+    let processed = 0
+    let failed = 0
+
+    for (const chainEntry of validChains) {
+      const slug = chainEntry.shortName!.toLowerCase()
+      const chainId = chainEntry.chainId
       const rpcUrls = extractRpcUrls(chainEntry)
-      console.log(`[Cron] ${slug}: Found ${rpcUrls.length} RPC URLs to test`)
+      const tvl = (chainEntry as { tvl?: number }).tvl || 0
 
-      if (rpcUrls.length === 0) {
-        continue
+      console.log(`[Cron] ${slug} (TVL: $${(tvl / 1e9).toFixed(2)}B): Testing ${rpcUrls.length} RPCs...`)
+
+      try {
+        // Validate nodes with full testing
+        const { nodes, archiveNodes } = await validateChainNodes(rpcUrls, chainId)
+
+        if (nodes.length > 0) {
+          // Get whitelisted MEV nodes for this chain (if any)
+          const mevNodes = MEV_NODES[slug] || []
+
+          // Store in D1
+          await storeChainData(env.DB, slug, chainId, nodes, archiveNodes, mevNodes)
+          processed++
+          console.log(`[Cron] ${slug}: ${nodes.length} valid, ${archiveNodes.length} archive`)
+        } else {
+          console.log(`[Cron] ${slug}: No valid nodes found`)
+          failed++
+        }
+      } catch (e) {
+        console.error(`[Cron] Error processing ${slug}:`, e)
+        failed++
       }
-
-      // Validate nodes
-      const { nodes, archiveNodes } = await validateChainNodes(rpcUrls, expectedChainId)
-      console.log(`[Cron] ${slug}: ${nodes.length} valid nodes, ${archiveNodes.length} archive nodes`)
-
-      // Get whitelisted MEV nodes for this chain
-      const mevNodes = MEV_NODES[slug] || []
-      if (mevNodes.length > 0) {
-        console.log(`[Cron] ${slug}: ${mevNodes.length} MEV protection nodes whitelisted`)
-      }
-
-      // Store in D1
-      await storeChainData(env.DB, slug, expectedChainId, nodes, archiveNodes, mevNodes)
-      console.log(`[Cron] ${slug}: Stored in database`)
     }
 
-    console.log('[Cron] Public node sync completed successfully')
+    console.log(`[Cron] Sync complete: ${processed} chains stored, ${failed} failed`)
   } catch (error) {
     console.error('[Cron] Public node sync failed:', error)
     throw error
   }
 }
+

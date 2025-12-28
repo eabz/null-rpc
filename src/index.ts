@@ -1,4 +1,4 @@
-import { handleRequest, handleRoot } from '@/handlers'
+import { handleChains, handleRequest, handleRoot } from '@/handlers'
 import { syncPublicNodes } from '@/services'
 
 export { ChainDO } from './objects/chain'
@@ -83,6 +83,13 @@ export default {
     // -------------------------------------------------------------------------
     if (path === '/' || path === '') {
       return handleRoot()
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. Chains info endpoint
+    // -------------------------------------------------------------------------
+    if (path === '/chains') {
+      return handleChains(env)
     }
 
     // -------------------------------------------------------------------------
