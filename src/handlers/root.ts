@@ -7,7 +7,7 @@ export function handleRoot(): Response {
   // This handler acts as fallback for API-style requests
   return new Response('NullRPC API', {
     headers: {
-      'Content-Type': 'text/plain',
+      'Content-Type': 'text/plain'
     }
   })
 }

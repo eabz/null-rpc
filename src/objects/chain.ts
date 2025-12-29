@@ -68,11 +68,7 @@ export class ChainDO extends DurableObject<Env> {
     }
 
     // Archive methods - traces and debug
-    if (
-      method.startsWith('trace_') ||
-      method.startsWith('debug_') ||
-      method === 'eth_getLogs'
-    ) {
+    if (method.startsWith('trace_') || method.startsWith('debug_') || method === 'eth_getLogs') {
       return 'archive'
     }
 
@@ -89,13 +85,7 @@ export class ChainDO extends DurableObject<Env> {
    */
   private requiresArchiveNode(method: string, params: unknown[]): boolean {
     // Methods that take a block parameter
-    const blockMethods = [
-      'eth_getBalance',
-      'eth_getCode',
-      'eth_getTransactionCount',
-      'eth_getStorageAt',
-      'eth_call'
-    ]
+    const blockMethods = ['eth_getBalance', 'eth_getCode', 'eth_getTransactionCount', 'eth_getStorageAt', 'eth_call']
 
     if (!blockMethods.includes(method)) return false
 
@@ -133,10 +123,10 @@ export class ChainDO extends DurableObject<Env> {
     // Fallback to regular nodes if MEV nodes fail or don't exist
     const nodes = this.chainData?.nodes || []
     if (nodes.length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'No nodes available' }),
-        { status: 503, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: 'No nodes available' }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' }
+      })
     }
 
     const shuffled = [...nodes].sort(() => 0.5 - Math.random())
@@ -145,10 +135,10 @@ export class ChainDO extends DurableObject<Env> {
       if (response.ok) return response
     }
 
-    return new Response(
-      JSON.stringify({ error: 'All nodes failed for transaction' }),
-      { status: 502, headers: { 'Content-Type': 'application/json' } }
-    )
+    return new Response(JSON.stringify({ error: 'All nodes failed for transaction' }), {
+      status: 502,
+      headers: { 'Content-Type': 'application/json' }
+    })
   }
 
   /**
@@ -179,10 +169,10 @@ export class ChainDO extends DurableObject<Env> {
     const nodes = this.chainData?.nodes || []
 
     if (nodes.length === 0) {
-      return new Response(
-        JSON.stringify({ error: `No nodes available for ${chainSlug}` }),
-        { status: 503, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: `No nodes available for ${chainSlug}` }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' }
+      })
     }
 
     const shuffled = [...nodes].sort(() => 0.5 - Math.random())
@@ -191,10 +181,10 @@ export class ChainDO extends DurableObject<Env> {
       if (response.ok) return response
     }
 
-    return new Response(
-      JSON.stringify({ error: 'All upstream nodes failed' }),
-      { status: 502, headers: { 'Content-Type': 'application/json' } }
-    )
+    return new Response(JSON.stringify({ error: 'All upstream nodes failed' }), {
+      status: 502,
+      headers: { 'Content-Type': 'application/json' }
+    })
   }
 
   private async ensureChainData(slug: string) {
@@ -212,8 +202,8 @@ export class ChainDO extends DurableObject<Env> {
           id: result.id as number,
           slug: result.slug as string,
           chainId: result.chainId as number,
-          nodes: JSON.parse(result.nodes as string || '[]'),
-          archive_nodes: JSON.parse(result.archive_nodes as string || '[]'),
+          nodes: JSON.parse((result.nodes as string) || '[]'),
+          archive_nodes: JSON.parse((result.archive_nodes as string) || '[]'),
           mev_nodes: result.mev_protection ? JSON.parse(result.mev_protection as string) : []
         }
         this.lastSync = now
@@ -225,7 +215,7 @@ export class ChainDO extends DurableObject<Env> {
       console.error('Failed to load chain data from D1', e)
       // Keep old data if available on error?
       if (!this.chainData) {
-         this.chainData = null
+        this.chainData = null
       }
     }
   }

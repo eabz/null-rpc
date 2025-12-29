@@ -7,10 +7,7 @@ const CHAINLIST_API = 'https://chainlist.org/rpcs.json'
 
 // Whitelisted MEV protection nodes per chain
 const MEV_NODES: Record<string, string[]> = {
-  eth: [
-    'https://eth.merkle.io',
-    'https://rpc.mevblocker.io/fullprivacy'
-  ]
+  eth: ['https://eth.merkle.io', 'https://rpc.mevblocker.io/fullprivacy']
 }
 
 // Target chains with their expected chain IDs
@@ -52,7 +49,7 @@ interface ValidatedNode {
  */
 async function fetchChainlist(): Promise<ChainlistEntry[]> {
   const response = await fetch(CHAINLIST_API, {
-    headers: { 'Accept': 'application/json' }
+    headers: { Accept: 'application/json' }
   })
 
   if (!response.ok) {
@@ -109,7 +106,7 @@ async function testChainId(url: string, expectedChainId: number): Promise<boolea
 
     if (!response.ok) return false
 
-    const data = await response.json() as { result?: string; error?: unknown }
+    const data = (await response.json()) as { result?: string; error?: unknown }
 
     if (data.error || !data.result) return false
 
@@ -146,7 +143,7 @@ async function testArchiveCapability(url: string): Promise<boolean> {
 
     if (!response.ok) return false
 
-    const data = await response.json() as { result?: string; error?: unknown }
+    const data = (await response.json()) as { result?: string; error?: unknown }
 
     // Archive nodes can serve historical state, so they return a result
     // Non-archive nodes typically return an error about missing trie node
@@ -300,4 +297,3 @@ export async function syncPublicNodes(env: Env): Promise<void> {
     throw error
   }
 }
-

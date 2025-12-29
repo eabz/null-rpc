@@ -2,7 +2,7 @@ import { createRawJsonResponse } from '@/utils'
 
 /**
  * Analytics endpoint - queries Analytics Engine for dashboard data
- * 
+ *
  * Endpoints:
  * - /analytics/overview - Overall stats (last 24h)
  * - /analytics/chains - Per-chain breakdown
@@ -140,38 +140,28 @@ const QUERIES = {
  * Query Analytics Engine via Cloudflare API
  * Note: This requires CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN env vars
  */
-async function queryAnalyticsEngine(
-  accountId: string,
-  apiToken: string,
-  query: string
-): Promise<unknown[]> {
-  const response = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${accountId}/analytics_engine/sql`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiToken}`,
-        'Content-Type': 'text/plain'
-      },
-      body: query
-    }
-  )
+async function queryAnalyticsEngine(accountId: string, apiToken: string, query: string): Promise<unknown[]> {
+  const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/analytics_engine/sql`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiToken}`,
+      'Content-Type': 'text/plain'
+    },
+    body: query
+  })
 
   if (!response.ok) {
     const errorText = await response.text()
     throw new Error(`Analytics Engine query failed: ${response.status} - ${errorText}`)
   }
 
-  const result = await response.json() as { data?: unknown[]; meta?: unknown }
-  
+  const result = (await response.json()) as { data?: unknown[]; meta?: unknown }
+
   // Return only the data array, strip meta
   return result.data || []
 }
 
-export async function handleAnalytics(
-  request: Request,
-  env: Env
-): Promise<Response> {
+export async function handleAnalytics(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url)
   const path = url.pathname
 
@@ -182,7 +172,7 @@ export async function handleAnalytics(
 
   if (!accountId || !apiToken) {
     return createRawJsonResponse(
-      JSON.stringify({ 
+      JSON.stringify({
         error: 'Analytics not configured',
         message: 'CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN required'
       }),
@@ -203,15 +193,17 @@ export async function handleAnalytics(
         queryAnalyticsEngine(accountId, apiToken, QUERIES.errorBreakdown)
       ])
 
-      return createRawJsonResponse(JSON.stringify({
-        overview,
-        chains,
-        methods,
-        timeseries,
-        cachePerformance: cache,
-        errors,
-        generatedAt: new Date().toISOString()
-      }))
+      return createRawJsonResponse(
+        JSON.stringify({
+          overview,
+          chains,
+          methods,
+          timeseries,
+          cachePerformance: cache,
+          errors,
+          generatedAt: new Date().toISOString()
+        })
+      )
     }
 
     if (path === '/analytics/overview') {
@@ -249,15 +241,9 @@ export async function handleAnalytics(
       return createRawJsonResponse(JSON.stringify(data))
     }
 
-    return createRawJsonResponse(
-      JSON.stringify({ error: 'Unknown analytics endpoint' }),
-      404
-    )
+    return createRawJsonResponse(JSON.stringify({ error: 'Unknown analytics endpoint' }), 404)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    return createRawJsonResponse(
-      JSON.stringify({ error: 'Analytics query failed', message }),
-      500
-    )
+    return createRawJsonResponse(JSON.stringify({ error: 'Analytics query failed', message }), 500)
   }
 }

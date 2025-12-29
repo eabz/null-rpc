@@ -1,4 +1,4 @@
-import { handleAnalytics, handleChains, handleRequest, handleRoot } from '@/handlers'
+import { handleAnalytics, handleChainPage, handleChains, handleRequest, handleRoot } from '@/handlers'
 import { syncPublicNodes } from '@/services'
 
 export { ChainDO } from './objects/chain'
@@ -84,7 +84,7 @@ export default {
     // Files with extensions (e.g., .png, .ico, .html) are handled by Cloudflare's assets
     const lastSegment = path.split('/').pop() || ''
     const hasExtension = lastSegment.includes('.')
-    
+
     if (hasExtension || path === '/' || path === '') {
       // For root URL, the assets config will serve index.html
       // For files, assets config serves from public/
@@ -113,7 +113,7 @@ export default {
     }
 
     // -------------------------------------------------------------------------
-    // 2. Zero-allocation routing logic
+    // 4. Zero-allocation routing logic
     // -------------------------------------------------------------------------
     // We manually extract path segments to avoid the overhead of `split('/').filter(Boolean)`.
     // The logic handles leading slashes, trailing slashes, and double slashes.
@@ -128,6 +128,15 @@ export default {
       const chain = path.slice(start)
       if (!chain) return handleRoot() // Handle "/" strictly if missed fast path
 
+      // GET requests serve the chain analytics page
+      if (request.method === 'GET') {
+        const chainPage = await handleChainPage(chain, env)
+        if (chainPage) return chainPage
+        // If chain not found, return 404
+        return new Response('Chain not found', { status: 404 })
+      }
+
+      // POST requests are RPC calls
       return checkRateLimitAndHandlePublic(chain, cleanRequest, clientIp, env, ctx)
     }
 
@@ -163,7 +172,6 @@ export default {
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(syncPublicNodes(env))
   }
-  
 } satisfies ExportedHandler<Env>
 
 async function checkRateLimitAndHandlePublic(

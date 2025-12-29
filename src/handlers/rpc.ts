@@ -4,7 +4,6 @@ import { createJsonResponse, getContentLength, trackRequest } from '@/utils'
 
 // Global round-robin is now handled by DO or per-request within DO
 
-
 export async function handleRequest(
   chain: string,
   request: Request,
@@ -87,8 +86,8 @@ export async function handleRequest(
 
   // Track the request
   if (ctx) {
-     const successful = response.ok
-     const finalError = successful ? undefined : 'opt_failed' // Or parse error
+    const successful = response.ok
+    const finalError = successful ? undefined : 'opt_failed' // Or parse error
 
     trackRequest(env, ctx, {
       cacheStatus: cacheStatus === 'HIT' ? 'HIT' : ttl > 0 ? 'MISS' : 'BYPASS',
@@ -104,12 +103,10 @@ export async function handleRequest(
 
   // Save to cache if applicable
   if (ctx && cacheKeyUrl && ttl > 0 && response.ok) {
-        // Warning: Respone body might be consumed?
-        // DO fetch returns a new Response, but we should double check if cloning is needed for caching
-        ctx.waitUntil(cacheResponse(cacheKeyUrl, response.clone(), ttl, ctx))
+    // Warning: Respone body might be consumed?
+    // DO fetch returns a new Response, but we should double check if cloning is needed for caching
+    ctx.waitUntil(cacheResponse(cacheKeyUrl, response.clone(), ttl, ctx))
   }
 
   return response
 }
-
-

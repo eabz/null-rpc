@@ -41,9 +41,6 @@ export async function handleChains(env: Env): Promise<Response> {
       })
     )
   } catch (error) {
-    return createRawJsonResponse(
-      JSON.stringify({ error: 'Failed to fetch chain data' }),
-      500
-    )
+    return createRawJsonResponse(JSON.stringify({ error: 'Failed to fetch chain data' }), 500)
   }
 }

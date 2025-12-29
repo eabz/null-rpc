@@ -5,12 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NullRPC - High-Performance RPC for EVM chains</title>
   <meta name="description" content="Free, privacy-focused RPC endpoints for EVM chains. No IP logging. No tracking.">
-  
-  <!-- Favicons -->
-  <link rel="icon" type="image/x-icon" href="/favicon.ico">
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <script>
+      const LOGO_URL = "https://imagedelivery.net/vgqvCj4Mw_NLJNB76Px9jg/4f7c2110-61c0-4c34-a0f2-5b9a49a7aa00/public";
+      const OG_URL = "https://imagedelivery.net/vgqvCj4Mw_NLJNB76Px9jg/57f80ba6-a62e-4e20-4929-13f781917600/public";
+      const FAVICON_x32_URL = "https://imagedelivery.net/vgqvCj4Mw_NLJNB76Px9jg/3f2b4eef-4ed4-43f9-bbcf-d3e905afb900/public";
+      const FAVICON_x16_URL = "https://imagedelivery.net/vgqvCj4Mw_NLJNB76Px9jg/840927d0-d16d-46cf-17ec-8ff15a8f5d00/public";
+      const APPLE_TOUCH_ICON_URL = "https://imagedelivery.net/vgqvCj4Mw_NLJNB76Px9jg/9c23b239-5d3f-4be8-d506-d635b300ce00/public";
+
+    </script>
+  <!-- Favicons (set dynamically from constants) -->
+  <link rel="icon" type="image/png" sizes="32x32" id="favicon32">
+  <link rel="icon" type="image/png" sizes="16x16" id="favicon16">
+  <link rel="apple-touch-icon" sizes="180x180" id="appleTouchIcon">
+  <script>
+    document.getElementById('favicon32').href = FAVICON_x32_URL;
+    document.getElementById('favicon16').href = FAVICON_x16_URL;
+    document.getElementById('appleTouchIcon').href = APPLE_TOUCH_ICON_URL;
+  </script>
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -100,11 +111,34 @@
       pointer-events: none;
     }
 
-    .hero-logo {
-      width: 120px;
-      height: 120px;
-      margin-bottom: 32px;
+    .hero-logo-wrapper {
       position: relative;
+      width: 160px;
+      height: 160px;
+      margin: 0 auto 32px;
+    }
+
+    .hero-logo {
+      width: 160px;
+      height: 160px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-logo-glow {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(
+        circle,
+        rgba(0, 122, 255, 0.15) 0%,
+        transparent 60%
+      );
+      z-index: 0;
+      pointer-events: none;
     }
 
     .hero h1 {
@@ -320,20 +354,135 @@
       margin-bottom: 32px;
     }
 
-    .chain-select {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(0, 212, 255, 0.2);
-      border-radius: 8px;
-      padding: 12px 16px;
-      color: var(--white);
-      font-size: 14px;
-      min-width: 200px;
-      cursor: pointer;
+    /* Custom Dropdown */
+    .custom-dropdown {
+      position: relative;
+      min-width: 280px;
     }
 
-    .chain-select:focus {
-      outline: none;
+    .dropdown-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(0, 212, 255, 0.2);
+      border-radius: 12px;
+      padding: 14px 20px;
+      color: var(--white);
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .dropdown-trigger:hover {
+      border-color: var(--cyan-ray);
+      background: rgba(0, 212, 255, 0.05);
+    }
+
+    .dropdown-trigger.active {
       border-color: var(--ether-blue);
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+      border-radius: 12px 12px 0 0;
+    }
+
+    .dropdown-trigger svg {
+      width: 18px;
+      height: 18px;
+      transition: transform 0.2s;
+    }
+
+    .dropdown-trigger.active svg {
+      transform: rotate(180deg);
+    }
+
+    .dropdown-menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: rgba(10, 10, 25, 0.98);
+      border: 1px solid rgba(0, 212, 255, 0.2);
+      border-top: none;
+      border-radius: 0 0 12px 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      z-index: 100;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: all 0.2s;
+      backdrop-filter: blur(20px);
+    }
+
+    .dropdown-menu.open {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .dropdown-menu::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .dropdown-menu::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .dropdown-menu::-webkit-scrollbar-thumb {
+      background: rgba(0, 212, 255, 0.3);
+      border-radius: 3px;
+    }
+
+    .dropdown-item {
+      padding: 12px 20px;
+      color: var(--terminal-grey);
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .dropdown-item:last-child {
+      border-bottom: none;
+    }
+
+    .dropdown-item:hover {
+      background: rgba(0, 212, 255, 0.1);
+      color: var(--white);
+    }
+
+    .dropdown-item.selected {
+      background: rgba(0, 122, 255, 0.15);
+      color: var(--cyan-ray);
+    }
+
+    .dropdown-item .chain-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--ether-blue), var(--cyan-ray));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .dropdown-item .chain-name {
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .dropdown-item .chain-requests {
+      font-size: 12px;
+      opacity: 0.6;
+      font-family: 'JetBrains Mono', monospace;
     }
 
     .analytics-grid {
@@ -492,7 +641,7 @@
 <body>
   <header>
     <div class="container header-content">
-      <img src="/logo-squared.png" alt="NullRPC" class="logo">
+      <img id="headerLogo" alt="NullRPC" class="logo">
       <nav class="nav-links">
         <a href="#chains">Chains</a>
         <a href="#analytics">Analytics</a>
@@ -555,9 +704,19 @@
         <p class="section-subtitle">Real-time metrics from our network</p>
 
         <div class="analytics-controls">
-          <select class="chain-select" id="chainSelect">
-            <option value="all">All Chains</option>
-          </select>
+          <div class="custom-dropdown" id="chainDropdown">
+            <div class="dropdown-trigger" id="dropdownTrigger">
+              <span id="selectedChainText">All Chains</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#00D4FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+            <div class="dropdown-menu" id="dropdownMenu">
+              <div class="dropdown-item selected" data-value="all">
+                <span class="chain-name">All Chains</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="analytics-grid" id="statsGrid">
@@ -592,7 +751,7 @@
   <footer>
     <div class="container footer-content">
       <div class="footer-left">
-        <img src="/logo-squared.png" alt="NullRPC" class="footer-logo">
+        <img id="footerLogo" alt="NullRPC" class="footer-logo">
         <span class="footer-text">© 2025 NullRPC</span>
       </div>
       <div class="footer-links">
@@ -627,14 +786,14 @@
         const data = await res.json();
         
         const grid = document.getElementById('chainsGrid');
-        const select = document.getElementById('chainSelect');
+        const dropdownMenu = document.getElementById('dropdownMenu');
         
         if (data.chains && data.chains.length > 0) {
           grid.innerHTML = data.chains.map(chain => `
             <div class="chain-card">
               <div class="chain-icon">${chain.slug.slice(0, 2).toUpperCase()}</div>
               <div class="chain-info">
-                <h4>${chain.slug}</h4>
+                <h4>${chain.name || chain.slug}</h4>
                 <span class="endpoint">nullrpc.dev/${chain.slug}</span>
               </div>
               <div class="chain-stats">
@@ -654,12 +813,24 @@
             </div>
           `).join('');
 
-          // Populate select
-          data.chains.forEach(chain => {
-            const opt = document.createElement('option');
-            opt.value = chain.slug;
-            opt.textContent = chain.slug;
-            select.appendChild(opt);
+          // Populate custom dropdown
+          const chainItems = data.chains.map(chain => `
+            <div class="dropdown-item" data-value="${chain.slug}">
+              <div class="chain-badge">${chain.slug.slice(0, 2).toUpperCase()}</div>
+              <span class="chain-name">${chain.name || chain.slug}</span>
+            </div>
+          `).join('');
+          
+          dropdownMenu.innerHTML = `
+            <div class="dropdown-item selected" data-value="all">
+              <span class="chain-name">All Chains</span>
+            </div>
+            ${chainItems}
+          `;
+
+          // Add click handlers to dropdown items
+          dropdownMenu.querySelectorAll('.dropdown-item').forEach(item => {
+            item.addEventListener('click', () => selectChain(item.dataset.value, item.querySelector('.chain-name').textContent));
           });
         } else {
           grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; opacity: 0.5; padding: 48px 0;">No chains available yet.</p>';
@@ -669,6 +840,44 @@
         document.getElementById('chainsGrid').innerHTML = '<p style="grid-column: 1 / -1; text-align: center; opacity: 0.5; padding: 48px 0;">Failed to load chains</p>';
       }
     }
+
+    // Custom dropdown handling
+    let selectedChainValue = 'all';
+    
+    function toggleDropdown() {
+      const trigger = document.getElementById('dropdownTrigger');
+      const menu = document.getElementById('dropdownMenu');
+      trigger.classList.toggle('active');
+      menu.classList.toggle('open');
+    }
+
+    function selectChain(value, text) {
+      selectedChainValue = value;
+      document.getElementById('selectedChainText').textContent = text;
+      
+      // Update selected state
+      document.querySelectorAll('.dropdown-item').forEach(item => {
+        item.classList.toggle('selected', item.dataset.value === value);
+      });
+      
+      // Close dropdown
+      document.getElementById('dropdownTrigger').classList.remove('active');
+      document.getElementById('dropdownMenu').classList.remove('open');
+      
+      // TODO: Filter analytics by chain
+    }
+
+    // Setup dropdown event listeners
+    document.getElementById('dropdownTrigger').addEventListener('click', toggleDropdown);
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      const dropdown = document.getElementById('chainDropdown');
+      if (!dropdown.contains(e.target)) {
+        document.getElementById('dropdownTrigger').classList.remove('active');
+        document.getElementById('dropdownMenu').classList.remove('open');
+      }
+    });
 
     // Fetch analytics data
     async function loadAnalytics() {
@@ -768,6 +977,10 @@
         }
       });
     }
+
+    // Set logos from constants
+    document.getElementById('headerLogo').src = LOGO_URL;
+    document.getElementById('footerLogo').src = LOGO_URL;
 
     // Load data on page load
     loadChains();

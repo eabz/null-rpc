@@ -1,4 +1,5 @@
 export { handleAnalytics } from './analytics'
+export { handleChainPage } from './chain-page'
 export { handleChains } from './chains'
 export { handleRoot } from './root'
 export { handleRequest } from './rpc'

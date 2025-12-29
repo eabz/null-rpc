@@ -7,7 +7,7 @@ const STATIC_ASSETS: Record<string, { contentType: string }> = {
   '/favicon-32x32.png': { contentType: 'image/png' },
   '/apple-touch-icon.png': { contentType: 'image/png' },
   '/logo.png': { contentType: 'image/png' },
-  '/logo-squared.png': { contentType: 'image/png' },
+  '/logo-squared.png': { contentType: 'image/png' }
 }
 
 export function handleStaticAsset(path: string): Response | null {
@@ -16,9 +16,9 @@ export function handleStaticAsset(path: string): Response | null {
 
   // For now, return a redirect to a CDN or placeholder
   // In production, you'd use Cloudflare Pages or R2 for static assets
-  
+
   // Return 404 for now - assets should be served via Cloudflare Pages or external CDN
-  return new Response('Asset not found - use external CDN', { 
+  return new Response('Asset not found - use external CDN', {
     status: 404,
     headers: { 'Content-Type': 'text/plain' }
   })
