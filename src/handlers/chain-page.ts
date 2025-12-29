@@ -219,7 +219,7 @@ function generateChainPage(chain: string, chainName: string): string {
 <body>
   <header>
     <div class="container header-content">
-      <a href="/"><img src="/logo-squared.png" alt="NullRPC" class="logo"></a>
+      <a href="/"><img src="https://imagedelivery.net/vgqvCj4Mw_NLJNB76Px9jg/4f7c2110-61c0-4c34-a0f2-5b9a49a7aa00/public" alt="NullRPC" class="logo"></a>
       <nav class="nav-links">
         <a href="/#chains">All Chains</a>
         <a href="https://github.com/0xeabz/null-rpc" target="_blank">GitHub</a>
@@ -277,8 +277,8 @@ function generateChainPage(chain: string, chainName: string): string {
   <footer>
     <div class="container footer-content">
       <div class="footer-left">
-        <img src="/logo.png" alt="NullRPC" class="footer-logo">
-        <span class="footer-text">© 2025 NullRPC</span>
+        <img src="https://imagedelivery.net/vgqvCj4Mw_NLJNB76Px9jg/4f7c2110-61c0-4c34-a0f2-5b9a49a7aa00/public" alt="NullRPC" class="footer-logo">
+        <span class="footer-text">© 2024 NullRPC</span>
       </div>
       <div class="footer-links">
         <a href="https://github.com/0xeabz/null-rpc" target="_blank">
