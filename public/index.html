@@ -28,6 +28,28 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'null-black': '#050510',
+            'ether-blue': '#007AFF',
+            'cyan-ray': '#00D4FF',
+            'status-green': '#00FF94',
+            'terminal-grey': '#8F9CA9',
+          },
+          fontFamily: {
+            'sans': ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            'mono': ['JetBrains Mono', 'monospace'],
+          },
+        }
+      }
+    }
+  </script>
+  
   <style>
     :root {
       --null-black: #050510;
@@ -628,22 +650,139 @@
 
     /* Responsive */
     @media (max-width: 768px) {
+      .hero {
+        padding: 60px 0;
+      }
+
       .hero h1 {
-        font-size: 36px;
+        font-size: 42px;
+      }
+
+      .hero .tagline {
+        font-size: 18px;
+      }
+
+      .hero .subtitle {
+        font-size: 14px;
+      }
+
+      .endpoint-box {
+        padding: 16px 20px;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .endpoint-box code {
+        font-size: 14px;
       }
 
       .features {
         grid-template-columns: 1fr;
+        gap: 16px;
+        padding: 40px 0;
+      }
+
+      .chains-section {
+        padding: 40px 0;
+      }
+
+      .chains-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .chain-card {
+        padding: 16px;
+        flex-wrap: wrap;
+      }
+
+      .chain-stats {
+        width: 100%;
+        margin-left: 0;
+        margin-top: 12px;
+        justify-content: flex-start;
+        gap: 20px;
+      }
+
+      .analytics-section {
+        padding: 40px 0;
       }
 
       .analytics-grid {
         grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+
+      .stat-card {
+        padding: 16px;
+      }
+
+      .stat-value {
+        font-size: 24px;
+      }
+
+      .chart-container {
+        padding: 20px;
+      }
+
+      .custom-dropdown {
+        min-width: 200px;
+        width: 100%;
+        max-width: 300px;
+      }
+
+      .header-content {
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+
+      .nav-links {
+        gap: 16px;
+      }
+
+      .nav-links a {
+        font-size: 13px;
       }
 
       .footer-content {
         flex-direction: column;
         gap: 24px;
         text-align: center;
+      }
+
+      .footer-links {
+        justify-content: center;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 0 16px;
+      }
+
+      .hero h1 {
+        font-size: 32px;
+      }
+
+      .hero .tagline {
+        font-size: 16px;
+      }
+
+      .analytics-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stat-value {
+        font-size: 20px;
+      }
+
+      .nav-links {
+        gap: 12px;
+      }
+
+      .endpoint-box code {
+        font-size: 12px;
+        word-break: break-all;
       }
     }
   </style>
