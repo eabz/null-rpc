@@ -278,7 +278,7 @@ function generateChainPage(chain: string, chainName: string): string {
     <div class="container footer-content">
       <div class="footer-left">
         <img src="https://imagedelivery.net/vgqvCj4Mw_NLJNB76Px9jg/4f7c2110-61c0-4c34-a0f2-5b9a49a7aa00/public" alt="NullRPC" class="footer-logo">
-        <span class="footer-text">© 2024 NullRPC</span>
+        <span class="footer-text">© 2025 NullRPC</span>
       </div>
       <div class="footer-links">
         <a href="https://github.com/0xeabz/null-rpc" target="_blank">

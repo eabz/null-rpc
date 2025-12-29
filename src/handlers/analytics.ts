@@ -12,58 +12,13 @@ import { createRawJsonResponse } from '@/utils'
 
 // Analytics Engine SQL queries
 
+// Helper to get chain filter clause
+const GetChainClause = (chain?: string | null) => (chain && chain !== 'all' ? `AND blob1 = '${chain}'` : '')
+
 const QUERIES = {
-  // Cache performance
-  cachePerformance: `
-    SELECT 
-      blob1 as chain,
-      blob3 as cache_status,
-      SUM(_sample_interval * double1) as count
-    FROM nullrpc_metrics
-    WHERE timestamp > NOW() - INTERVAL '24' HOUR
-    AND index1 = 'rpc_requests'
-    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%'
-    GROUP BY blob1, blob3
-    ORDER BY count DESC
-  `,
-
-  // Stats per chain
-  chainStats: `
-    SELECT 
-      blob1 as chain,
-      SUM(_sample_interval * double1) as requests,
-      AVG(double2) as avg_latency_ms,
-      SUM(_sample_interval * double5) as cache_hits,
-      SUM(_sample_interval * double6) as errors
-    FROM nullrpc_metrics
-    WHERE timestamp > NOW() - INTERVAL '24' HOUR
-    AND index1 = 'rpc_requests'
-    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%'
-    GROUP BY blob1
-    ORDER BY requests DESC
-    LIMIT 50
-  `,
-
-  // Error breakdown
-  errorBreakdown: `
-    SELECT 
-      blob1 as chain,
-      blob4 as status_code,
-      blob5 as error_type,
-      SUM(_sample_interval * double1) as count
-    FROM nullrpc_metrics
-    WHERE timestamp > NOW() - INTERVAL '24' HOUR
-    AND index1 = 'rpc_requests'
-    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%'
-    AND double6 > 0
-    GROUP BY blob1, blob4, blob5
-    ORDER BY count DESC
-    LIMIT 100
-  `,
-
-  // Hourly timeseries for last 24h
-  hourlyTimeseries: `
-    SELECT 
+  // Hourly timeseries
+  hourlyTimeseries: (chain?: string | null) => `
+    SELECT
       toStartOfHour(timestamp) as hour,
       blob1 as chain,
       SUM(_sample_interval * double1) as requests,
@@ -73,31 +28,15 @@ const QUERIES = {
     FROM nullrpc_metrics
     WHERE timestamp > NOW() - INTERVAL '24' HOUR
     AND index1 = 'rpc_requests'
+    ${GetChainClause(chain)}
     AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%'
     GROUP BY hour, blob1
     ORDER BY hour DESC
     LIMIT 500
   `,
-
-  // Methods per chain per hour (for detailed graphs)
-  methodsPerHour: `
-    SELECT 
-      toStartOfHour(timestamp) as hour,
-      blob1 as chain,
-      blob2 as method,
-      SUM(_sample_interval * double1) as count
-    FROM nullrpc_metrics
-    WHERE timestamp > NOW() - INTERVAL '24' HOUR
-    AND index1 = 'rpc_requests'
-    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%'
-    AND blob2 != 'unknown'
-    GROUP BY hour, blob1, blob2
-    ORDER BY hour DESC, count DESC
-    LIMIT 1000
-  `,
   // Overview stats for last 24h
-  overview: `
-    SELECT 
+  overview: (chain?: string | null) => `
+    SELECT
       SUM(_sample_interval * double1) as total_requests,
       AVG(double2) as avg_latency_ms,
       SUM(_sample_interval * double5) as cache_hits,
@@ -106,24 +45,8 @@ const QUERIES = {
     FROM nullrpc_metrics
     WHERE timestamp > NOW() - INTERVAL '24' HOUR
     AND index1 = 'rpc_requests'
+    ${GetChainClause(chain)}
     AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%'
-  `,
-
-  // Top methods (exclude 'unknown' methods - non-RPC requests)
-  topMethods: `
-    SELECT 
-      blob1 as chain,
-      blob2 as method,
-      SUM(_sample_interval * double1) as count,
-      AVG(double2) as avg_latency_ms
-    FROM nullrpc_metrics
-    WHERE timestamp > NOW() - INTERVAL '24' HOUR
-    AND index1 = 'rpc_requests'
-    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%'
-    AND blob2 != 'unknown'
-    GROUP BY blob1, blob2
-    ORDER BY count DESC
-    LIMIT 100
   `
 }
 
@@ -177,89 +100,22 @@ export async function handleAnalytics(request: Request, env: Env): Promise<Respo
 
     // Route to specific query
     if (path === '/analytics' || path === '/analytics/') {
-      // Build filtered queries
-      const overviewQuery =
-        chainFilter && chainFilter !== 'all'
-          ? QUERIES.overview.replace('AND blob1 NOT LIKE', `AND blob1 = '${chainFilter}' AND blob1 NOT LIKE`)
-          : QUERIES.overview
-
-      const timeseriesQuery =
-        chainFilter && chainFilter !== 'all'
-          ? QUERIES.hourlyTimeseries.replace('AND blob1 NOT LIKE', `AND blob1 = '${chainFilter}' AND blob1 NOT LIKE`)
-          : QUERIES.hourlyTimeseries
-
-      const methodsQuery =
-        chainFilter && chainFilter !== 'all'
-          ? QUERIES.topMethods.replace('AND blob1 NOT LIKE', `AND blob1 = '${chainFilter}' AND blob1 NOT LIKE`)
-          : QUERIES.topMethods
-
-      const cacheQuery =
-        chainFilter && chainFilter !== 'all'
-          ? QUERIES.cachePerformance.replace('AND blob1 NOT LIKE', `AND blob1 = '${chainFilter}' AND blob1 NOT LIKE`)
-          : QUERIES.cachePerformance
-
-      const errorsQuery =
-        chainFilter && chainFilter !== 'all'
-          ? QUERIES.errorBreakdown.replace('AND blob1 NOT LIKE', `AND blob1 = '${chainFilter}' AND blob1 NOT LIKE`)
-          : QUERIES.errorBreakdown
+      console.log(`[Analytics] Filtering by chain: ${chainFilter || 'all'}`)
 
       // Return all data for dashboard
-      const [overview, chains, methods, timeseries, cache, errors] = await Promise.all([
-        queryAnalyticsEngine(accountId, apiToken, overviewQuery),
-        queryAnalyticsEngine(accountId, apiToken, QUERIES.chainStats),
-        queryAnalyticsEngine(accountId, apiToken, methodsQuery),
-        queryAnalyticsEngine(accountId, apiToken, timeseriesQuery),
-        queryAnalyticsEngine(accountId, apiToken, cacheQuery),
-        queryAnalyticsEngine(accountId, apiToken, errorsQuery)
+      const [overview, timeseries] = await Promise.all([
+        queryAnalyticsEngine(accountId, apiToken, QUERIES.overview(chainFilter)),
+        queryAnalyticsEngine(accountId, apiToken, QUERIES.hourlyTimeseries(chainFilter))
       ])
 
       return createRawJsonResponse(
         JSON.stringify({
-          cachePerformance: cache,
           chainFilter: chainFilter || 'all',
-          chains,
-          errors,
           generatedAt: new Date().toISOString(),
-          methods,
           overview,
           timeseries
         })
       )
-    }
-
-    if (path === '/analytics/overview') {
-      const data = await queryAnalyticsEngine(accountId, apiToken, QUERIES.overview)
-      return createRawJsonResponse(JSON.stringify(data))
-    }
-
-    if (path === '/analytics/chains') {
-      const data = await queryAnalyticsEngine(accountId, apiToken, QUERIES.chainStats)
-      return createRawJsonResponse(JSON.stringify(data))
-    }
-
-    if (path === '/analytics/methods') {
-      const data = await queryAnalyticsEngine(accountId, apiToken, QUERIES.topMethods)
-      return createRawJsonResponse(JSON.stringify(data))
-    }
-
-    if (path === '/analytics/timeseries') {
-      const data = await queryAnalyticsEngine(accountId, apiToken, QUERIES.hourlyTimeseries)
-      return createRawJsonResponse(JSON.stringify(data))
-    }
-
-    if (path === '/analytics/methods-hourly') {
-      const data = await queryAnalyticsEngine(accountId, apiToken, QUERIES.methodsPerHour)
-      return createRawJsonResponse(JSON.stringify(data))
-    }
-
-    if (path === '/analytics/cache') {
-      const data = await queryAnalyticsEngine(accountId, apiToken, QUERIES.cachePerformance)
-      return createRawJsonResponse(JSON.stringify(data))
-    }
-
-    if (path === '/analytics/errors') {
-      const data = await queryAnalyticsEngine(accountId, apiToken, QUERIES.errorBreakdown)
-      return createRawJsonResponse(JSON.stringify(data))
     }
 
     return createRawJsonResponse(JSON.stringify({ error: 'Unknown analytics endpoint' }), 404)
