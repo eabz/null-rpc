@@ -13,14 +13,14 @@ function generateChainPage(chain: string, chainName: string): string {
   <meta property="og:url" content="https://nullrpc.dev/${chain}">
   <meta property="og:title" content="${chainName} RPC - NullRPC">
   <meta property="og:description" content="Free, privacy-focused RPC endpoint for ${chainName}. No IP logging. No tracking.">
-  <meta property="og:image" content="https://imagedelivery.net/vgqvCj4Mw_NLJNB76Px9jg/57f80ba6-a62e-4e20-4929-13f781917600/public">
+  <meta property="og:image" content="https://imagedelivery.net/vgqvCj4Mw_NLJNB76Px9jg/c7f2ed26-ab1f-4cd0-1568-b1ff4c32ed00/public">
 
   <!-- Twitter -->
   <meta property="twitter:card" content="summary_large_image">
   <meta property="twitter:url" content="https://nullrpc.dev/${chain}">
   <meta property="twitter:title" content="${chainName} RPC - NullRPC">
   <meta property="twitter:description" content="Free, privacy-focused RPC endpoint for ${chainName}. No IP logging. No tracking.">
-  <meta property="twitter:image" content="https://imagedelivery.net/vgqvCj4Mw_NLJNB76Px9jg/57f80ba6-a62e-4e20-4929-13f781917600/public">
+  <meta property="twitter:image" content="https://imagedelivery.net/vgqvCj4Mw_NLJNB76Px9jg/c7f2ed26-ab1f-4cd0-1568-b1ff4c32ed00/public">
   
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">

@@ -4,24 +4,26 @@ High-performance, privacy-focused Ethereum JSON-RPC proxy built on Cloudflare Wo
 
 ## Features
 
-- **⚡ Global Edge Network** — Deployed on Cloudflare Workers for sub-millisecond routing decisions and global availability.
-- **🔄 Intelligent Caching** — Protocol-aware caching for JSON-RPC methods reducing upstream load by up to ~80%.
-- **📊 Real-time Analytics** — Integrated with Cloudflare Analytics Engine for granular insights on requests, latency, and errors per chain.
-- **🛡️ Chain Agnostic** — Dynamic routing and state management via Durable Objects for any EVM-compatible chain.
-- **🔒 Privacy First** — No IP logging, no user tracking, and no personally identifiable information (PII) retention.
+- **Global Edge Network** — Deployed on Cloudflare Workers for sub-millisecond routing decisions and global availability.
+- **Intelligent Caching** — Protocol-aware caching for JSON-RPC methods reducing upstream load.
+- **Privacy First** — No IP logging, no user tracking, and no personally identifiable information (PII) retention.
 
 ## Supported Chains
 
-NullRPC provides dedicated endpoints and analytics pages for major EVM networks:
+NullRPC provides dedicated endpoints for the following networks:
 
 | Chain | Endpoint | Description |
 |-------|----------|-------------|
-| **Ethereum** | `/eth` | Mainnet RPC with historical data access |
-| **Optimism** | `/optimism` | Low-latency L2 endpoint |
-| **Arbitrum** | `/arbitrum` | High-throughput Arbitrum One access |
-| **Base** | `/base` | Base L2 support |
-| **BSC** | `/bsc` | BNB Smart Chain endpoint |
+| **Ethereum** | `/eth` | Mainnet RPC |
+| **Binance Smart Chain** | `/bsc` | BSC Mainnet RPC |
 | **Polygon** | `/polygon` | Polygon PoS Mainnet |
+| **Arbitrum One** | `/arbitrum` | Arbitrum Optimistic Rollup |
+| **Optimism** | `/optimism` | Optimism Mainnet |
+| **Base** | `/base` | Base L2 |
+| **Unichain** | `/unichain` | Unichain Testnet/Mainnet |
+| **Berachain** | `/berachain` | Berachain Testnet/Mainnet |
+| **Plasma** | `/plasma` | Plasma Network |
+| **Katana Network** | `/katana` | Ronin/Katana Sidechain |
 
 ## Usage
 
@@ -37,30 +39,7 @@ curl -X POST https://nullrpc.dev/eth \
 
 ### Chain-Specific Dashboards
 
-Visit `https://nullrpc.dev/[chain]` (e.g., `https://nullrpc.dev/eth`) to view real-time performance metrics, health status, and connection details for that specific network.
-
-## Architecture
-
-The system leverages Cloudflare's serverless primitives for maximum scalability:
-
-```
-src/
-├── index.ts          # Zero-allocation routing & entry point
-├── handlers/
-│   ├── rpc.ts        # RPC method handling & proxy logic
-│   ├── chains.ts     # Chain configuration & status
-│   └── analytics.ts  # Analytics Engine integration
-├── objects/
-│   └── chain-do.ts   # Durable Object for chain state & aggregation
-└── services/
-    └── cache.ts      # Cache control & normalization logic
-```
-
-### Key Components
-
-- **ChainDO**: A Durable Object that maintains the state of each chain, including node health and configuration.
-- **Analytics Engine**: High-cardinality time-series database for tracking request volume, latency, and cache hit rates without performance pattern penalties.
-- **Zero-Allocation Routing**: optimized routing logic to minimize GC overhead on high-throughput paths.
+Visit `https://nullrpc.dev/[chain]` (e.g., `https://nullrpc.dev/eth`) to view performance metrics for that specific network.
 
 ## Caching Strategy
 
@@ -72,34 +51,6 @@ Caching is strictly defined by method type to ensure data consistency while maxi
 | **Volatile** | 3 sec | `eth_blockNumber`, `eth_gasPrice` |
 | **Block-Dependent** | Adaptive | `eth_call`, `eth_getBalance` (Latest vs Historical) |
 | **Passthrough** | None | `eth_sendRawTransaction`, `eth_newFilter` |
-
-## Development
-
-### Prerequisites
-
-- [Bun](https://bun.sh/)
-- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/)
-
-### Setup
-
-```bash
-# Install dependencies
-bun install
-
-# Generate types
-bun run typegen
-
-# Run local development server
-bun dev
-```
-
-### Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `CLOUDFLARE_ACCOUNT_ID` | Required for Analytics Engine queries |
-| `CLOUDFLARE_API_TOKEN` | Token with Analytics Engine read permissions |
-| `DB` | D1 Database binding for chain configuration |
 
 ## License
 
