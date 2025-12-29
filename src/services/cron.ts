@@ -198,6 +198,7 @@ async function validateChainNodes(
 async function storeChainData(
   db: D1Database,
   slug: string,
+  name: string,
   chainId: number,
   nodes: string[],
   archiveNodes: string[],
@@ -209,16 +210,17 @@ async function storeChainData(
 
   await db
     .prepare(
-      `INSERT INTO chains (slug, chainId, nodes, archive_nodes, mev_protection, updated_at)
-       VALUES (?, ?, ?, ?, ?, unixepoch())
+      `INSERT INTO chains (slug, name, chainId, nodes, archive_nodes, mev_protection, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, unixepoch())
        ON CONFLICT(slug) DO UPDATE SET
+         name = excluded.name,
          chainId = excluded.chainId,
          nodes = excluded.nodes,
          archive_nodes = excluded.archive_nodes,
          mev_protection = excluded.mev_protection,
          updated_at = unixepoch()`
     )
-    .bind(slug, chainId, nodesJson, archiveNodesJson, mevNodesJson)
+    .bind(slug, name, chainId, nodesJson, archiveNodesJson, mevNodesJson)
     .run()
 }
 
@@ -279,7 +281,7 @@ export async function syncPublicNodes(env: Env): Promise<void> {
           const mevNodes = MEV_NODES[slug] || []
 
           // Store in D1
-          await storeChainData(env.DB, slug, chainId, nodes, archiveNodes, mevNodes)
+          await storeChainData(env.DB, slug, chainEntry.name, chainId, nodes, archiveNodes, mevNodes)
           processed++
           console.log(`[Cron] ${slug}: ${nodes.length} valid, ${archiveNodes.length} archive`)
         } else {

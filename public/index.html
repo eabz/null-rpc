@@ -541,7 +541,6 @@
     <section id="chains" class="chains-section">
       <div class="container">
         <h2 class="section-title">Supported Chains</h2>
-        <p class="section-subtitle">50+ EVM chains with validated, healthy RPC nodes</p>
         
         <div class="chains-grid" id="chainsGrid">
           <div class="loading"><div class="spinner"></div></div>
@@ -663,11 +662,11 @@
             select.appendChild(opt);
           });
         } else {
-          grid.innerHTML = '<p style="text-align: center; opacity: 0.5;">No chains available yet. Run the cron job to sync.</p>';
+          grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; opacity: 0.5; padding: 48px 0;">No chains available yet.</p>';
         }
       } catch (e) {
         console.error('Failed to load chains:', e);
-        document.getElementById('chainsGrid').innerHTML = '<p style="text-align: center; opacity: 0.5;">Failed to load chains</p>';
+        document.getElementById('chainsGrid').innerHTML = '<p style="grid-column: 1 / -1; text-align: center; opacity: 0.5; padding: 48px 0;">Failed to load chains</p>';
       }
     }
 

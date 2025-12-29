@@ -2,6 +2,7 @@ import { createRawJsonResponse } from '@/utils'
 
 interface ChainStats {
   slug: string
+  name: string
   chainId: number
   nodes: number
   archiveNodes: number
@@ -12,7 +13,7 @@ interface ChainStats {
 export async function handleChains(env: Env): Promise<Response> {
   try {
     const results = await env.DB.prepare(
-      `SELECT slug, chainId, nodes, archive_nodes, mev_protection, updated_at FROM chains ORDER BY chainId`
+      `SELECT slug, name, chainId, nodes, archive_nodes, mev_protection, updated_at FROM chains ORDER BY chainId`
     ).all()
 
     const chains: ChainStats[] = results.results.map((row) => {
@@ -22,6 +23,7 @@ export async function handleChains(env: Env): Promise<Response> {
 
       return {
         slug: row.slug as string,
+        name: (row.name as string) || (row.slug as string),
         chainId: row.chainId as number,
         nodes: nodes.length,
         archiveNodes: archiveNodes.length,
