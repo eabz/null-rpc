@@ -12,16 +12,16 @@ const MEV_NODES: Record<string, string[]> = {
 
 // Target chains with their expected chain IDs
 const TARGET_CHAINS: Record<string, number> = {
-  eth: 1,
-  bsc: 56,
-  polygon: 137,
-  base: 8453,
-  unichain: 130,
-  optimism: 10,
   arbitrum: 42161,
-  plasma: 9745,
+  base: 8453,
+  berachain: 80094,
+  bsc: 56,
+  eth: 1,
   katana: 747474,
-  berachain: 80094
+  optimism: 10,
+  plasma: 9745,
+  polygon: 137,
+  unichain: 130
 }
 
 interface ChainlistRpc {
@@ -37,11 +37,6 @@ interface ChainlistEntry {
   shortName?: string
   rpc: (string | ChainlistRpc)[]
   [key: string]: unknown
-}
-
-interface ValidatedNode {
-  url: string
-  isArchive: boolean
 }
 
 /**
@@ -91,14 +86,14 @@ async function testChainId(url: string, expectedChainId: number): Promise<boolea
     const timeout = setTimeout(() => controller.abort(), 3000) // Reduced timeout
 
     const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        id: 1,
         jsonrpc: '2.0',
         method: 'eth_chainId',
-        params: [],
-        id: 1
+        params: []
       }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
       signal: controller.signal
     })
 
@@ -128,14 +123,14 @@ async function testArchiveCapability(url: string): Promise<boolean> {
     const timeout = setTimeout(() => controller.abort(), 3000) // Reduced timeout
 
     const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        id: 1,
         jsonrpc: '2.0',
         method: 'eth_getBalance',
-        params: ['0x0000000000000000000000000000000000000000', '0x1'], // Block 1
-        id: 1
+        params: ['0x0000000000000000000000000000000000000000', '0x1'] // Block 1
       }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
       signal: controller.signal
     })
 
@@ -173,7 +168,7 @@ async function validateChainNodes(
       ])
 
       if (!validChainId) return null
-      return { url, isArchive }
+      return { isArchive, url }
     })
   )
 
@@ -186,7 +181,7 @@ async function validateChainNodes(
     }
   }
 
-  return { nodes, archiveNodes }
+  return { archiveNodes, nodes }
 }
 
 /**
@@ -224,56 +219,47 @@ async function storeChainData(
 }
 
 /**
- * Main sync function - validates and stores top 20 chains by TVL
+ * Main sync function - validates and stores chains defined in TARGET_CHAINS
  */
 export async function syncPublicNodes(env: Env): Promise<void> {
   console.log('[Cron] Starting public node sync...')
-
-  const TOP_CHAINS_COUNT = 50
 
   try {
     // Fetch all chains from chainlist
     const chains = await fetchChainlist()
     console.log(`[Cron] Fetched ${chains.length} chains from chainlist`)
 
-    // Filter to valid mainnet chains with TVL data and enough RPCs
-    const validChains = chains
-      .filter((chainEntry) => {
-        if (!chainEntry.shortName) return false
-        const isTestnet = (chainEntry as { isTestnet?: boolean }).isTestnet === true
-        if (isTestnet) return false
-        const rpcUrls = extractRpcUrls(chainEntry)
-        // Must have more than 5 RPC endpoints to filter out small/unused chains
-        if (rpcUrls.length <= 5) return false
-        // Must have TVL data
-        const tvl = (chainEntry as { tvl?: number }).tvl
-        return typeof tvl === 'number' && tvl > 0
-      })
-      // Sort by TVL descending
-      .sort((a, b) => {
-        const tvlA = (a as { tvl?: number }).tvl || 0
-        const tvlB = (b as { tvl?: number }).tvl || 0
-        return tvlB - tvlA
-      })
-      // Take top N
-      .slice(0, TOP_CHAINS_COUNT)
-
-    console.log(`[Cron] Processing top ${validChains.length} chains by TVL`)
+    // Create a map of chainId -> chainEntry for quick lookup
+    const chainsByChainId = new Map<number, ChainlistEntry>()
+    for (const chain of chains) {
+      chainsByChainId.set(chain.chainId, chain)
+    }
 
     let processed = 0
     let failed = 0
 
-    for (const chainEntry of validChains) {
-      const slug = chainEntry.shortName!.toLowerCase()
-      const chainId = chainEntry.chainId
-      const rpcUrls = extractRpcUrls(chainEntry)
-      const tvl = (chainEntry as { tvl?: number }).tvl || 0
+    // Process only chains defined in TARGET_CHAINS
+    for (const [slug, expectedChainId] of Object.entries(TARGET_CHAINS)) {
+      const chainEntry = chainsByChainId.get(expectedChainId)
 
-      console.log(`[Cron] ${slug} (TVL: $${(tvl / 1e9).toFixed(2)}B): Testing ${rpcUrls.length} RPCs...`)
+      if (!chainEntry) {
+        console.log(`[Cron] ${slug}: Chain ID ${expectedChainId} not found in chainlist`)
+        failed++
+        continue
+      }
+
+      const rpcUrls = extractRpcUrls(chainEntry)
+      console.log(`[Cron] ${slug}: Testing ${rpcUrls.length} RPCs...`)
+
+      if (rpcUrls.length === 0) {
+        console.log(`[Cron] ${slug}: No RPC URLs found`)
+        failed++
+        continue
+      }
 
       try {
         // Validate nodes with full testing
-        const { nodes, archiveNodes } = await validateChainNodes(rpcUrls, chainId)
+        const { nodes, archiveNodes } = await validateChainNodes(rpcUrls, expectedChainId)
 
         if (nodes.length > 0) {
           // Get whitelisted MEV nodes for this chain (if any)
@@ -281,7 +267,7 @@ export async function syncPublicNodes(env: Env): Promise<void> {
 
           // Store in D1
           const icon = (chainEntry as { icon?: string }).icon
-          await storeChainData(env.DB, slug, chainEntry.name, icon, chainId, nodes, archiveNodes, mevNodes)
+          await storeChainData(env.DB, slug, chainEntry.name, icon, expectedChainId, nodes, archiveNodes, mevNodes)
           processed++
           console.log(`[Cron] ${slug}: ${nodes.length} valid, ${archiveNodes.length} archive`)
         } else {

@@ -88,6 +88,7 @@ export default {
     if (hasExtension || path === '/' || path === '') {
       // For root URL, the assets config will serve index.html
       // For files, assets config serves from public/
+      // biome-ignore lint/style/useNamingConvention: exact type required
       const assets = (env as unknown as { ASSETS?: { fetch: (req: Request) => Promise<Response> } }).ASSETS
       if (assets) {
         return assets.fetch(request)
@@ -169,18 +170,10 @@ export default {
     return new Response('Not Found', { status: 404 })
   },
 
-  async scheduled(_controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
-    console.log('[Scheduled] Handler triggered')
-    console.log('[Scheduled] DB binding exists:', !!env.DB)
-    try {
-      console.log('[Scheduled] Starting syncPublicNodes...')
-      await syncPublicNodes(env)
-      console.log('[Scheduled] Cron job completed successfully')
-    } catch (error) {
-      console.error('[Scheduled] Cron job failed:', error instanceof Error ? error.message : String(error))
-      console.error('[Scheduled] Stack:', error instanceof Error ? error.stack : 'No stack')
-      throw error
-    }
+  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    // Run the public nodes sync
+    // Note: In local dev, this may show "exception" but works correctly in production
+    ctx.waitUntil(syncPublicNodes(env))
   }
 } satisfies ExportedHandler<Env>
 

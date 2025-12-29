@@ -29,7 +29,7 @@
 	},
 	"d1_databases": [
 		{
-			"binding": "null_rpc_db",
+			"binding": "DB",
 			"database_name": "null-rpc-db",
 			"database_id": "f1d11ed8-da8d-47f3-93f1-816d1919048a"
 		}
