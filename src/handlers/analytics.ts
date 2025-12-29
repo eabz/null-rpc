@@ -10,29 +10,21 @@ import { createRawJsonResponse } from '@/utils'
  * - /analytics/timeseries - Hourly data for graphs
  */
 
-interface AnalyticsQuery {
-  // Analytics Engine SQL query
-  query: string
-  timeRange?: string
-}
-
 // Analytics Engine SQL queries
-// Filter: blob1 (chain) must be valid slug (alphanumeric/hyphen, no dots/slashes/encoded chars)
-const VALID_CHAIN_FILTER = `AND blob1 LIKE '%' AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%' AND blob2 != 'unknown'`
 
 const QUERIES = {
-  // Overview stats for last 24h
-  overview: `
+  // Cache performance
+  cachePerformance: `
     SELECT 
-      SUM(_sample_interval * double1) as total_requests,
-      AVG(double2) as avg_latency_ms,
-      SUM(_sample_interval * double5) as cache_hits,
-      SUM(_sample_interval * double6) as errors,
-      SUM(_sample_interval * double7) as rate_limited
+      blob1 as chain,
+      blob3 as cache_status,
+      SUM(_sample_interval * double1) as count
     FROM nullrpc_metrics
     WHERE timestamp > NOW() - INTERVAL '24' HOUR
     AND index1 = 'rpc_requests'
     AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%'
+    GROUP BY blob1, blob3
+    ORDER BY count DESC
   `,
 
   // Stats per chain
@@ -52,19 +44,19 @@ const QUERIES = {
     LIMIT 50
   `,
 
-  // Top methods (exclude 'unknown' methods - non-RPC requests)
-  topMethods: `
+  // Error breakdown
+  errorBreakdown: `
     SELECT 
       blob1 as chain,
-      blob2 as method,
-      SUM(_sample_interval * double1) as count,
-      AVG(double2) as avg_latency_ms
+      blob4 as status_code,
+      blob5 as error_type,
+      SUM(_sample_interval * double1) as count
     FROM nullrpc_metrics
     WHERE timestamp > NOW() - INTERVAL '24' HOUR
     AND index1 = 'rpc_requests'
     AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%'
-    AND blob2 != 'unknown'
-    GROUP BY blob1, blob2
+    AND double6 > 0
+    GROUP BY blob1, blob4, blob5
     ORDER BY count DESC
     LIMIT 100
   `,
@@ -87,37 +79,6 @@ const QUERIES = {
     LIMIT 500
   `,
 
-  // Cache performance
-  cachePerformance: `
-    SELECT 
-      blob1 as chain,
-      blob3 as cache_status,
-      SUM(_sample_interval * double1) as count
-    FROM nullrpc_metrics
-    WHERE timestamp > NOW() - INTERVAL '24' HOUR
-    AND index1 = 'rpc_requests'
-    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%'
-    GROUP BY blob1, blob3
-    ORDER BY count DESC
-  `,
-
-  // Error breakdown
-  errorBreakdown: `
-    SELECT 
-      blob1 as chain,
-      blob4 as status_code,
-      blob5 as error_type,
-      SUM(_sample_interval * double1) as count
-    FROM nullrpc_metrics
-    WHERE timestamp > NOW() - INTERVAL '24' HOUR
-    AND index1 = 'rpc_requests'
-    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%'
-    AND double6 > 0
-    GROUP BY blob1, blob4, blob5
-    ORDER BY count DESC
-    LIMIT 100
-  `,
-
   // Methods per chain per hour (for detailed graphs)
   methodsPerHour: `
     SELECT 
@@ -133,6 +94,36 @@ const QUERIES = {
     GROUP BY hour, blob1, blob2
     ORDER BY hour DESC, count DESC
     LIMIT 1000
+  `,
+  // Overview stats for last 24h
+  overview: `
+    SELECT 
+      SUM(_sample_interval * double1) as total_requests,
+      AVG(double2) as avg_latency_ms,
+      SUM(_sample_interval * double5) as cache_hits,
+      SUM(_sample_interval * double6) as errors,
+      SUM(_sample_interval * double7) as rate_limited
+    FROM nullrpc_metrics
+    WHERE timestamp > NOW() - INTERVAL '24' HOUR
+    AND index1 = 'rpc_requests'
+    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%'
+  `,
+
+  // Top methods (exclude 'unknown' methods - non-RPC requests)
+  topMethods: `
+    SELECT 
+      blob1 as chain,
+      blob2 as method,
+      SUM(_sample_interval * double1) as count,
+      AVG(double2) as avg_latency_ms
+    FROM nullrpc_metrics
+    WHERE timestamp > NOW() - INTERVAL '24' HOUR
+    AND index1 = 'rpc_requests'
+    AND blob1 NOT LIKE '%.%' AND blob1 NOT LIKE '%/%'
+    AND blob2 != 'unknown'
+    GROUP BY blob1, blob2
+    ORDER BY count DESC
+    LIMIT 100
   `
 }
 
@@ -142,12 +133,12 @@ const QUERIES = {
  */
 async function queryAnalyticsEngine(accountId: string, apiToken: string, query: string): Promise<unknown[]> {
   const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/analytics_engine/sql`, {
-    method: 'POST',
+    body: query,
     headers: {
       Authorization: `Bearer ${apiToken}`,
       'Content-Type': 'text/plain'
     },
-    body: query
+    method: 'POST'
   })
 
   if (!response.ok) {
@@ -181,27 +172,57 @@ export async function handleAnalytics(request: Request, env: Env): Promise<Respo
   }
 
   try {
+    // Get optional chain filter from query params
+    const chainFilter = url.searchParams.get('chain')
+
     // Route to specific query
     if (path === '/analytics' || path === '/analytics/') {
+      // Build filtered queries
+      const overviewQuery =
+        chainFilter && chainFilter !== 'all'
+          ? QUERIES.overview.replace('AND blob1 NOT LIKE', `AND blob1 = '${chainFilter}' AND blob1 NOT LIKE`)
+          : QUERIES.overview
+
+      const timeseriesQuery =
+        chainFilter && chainFilter !== 'all'
+          ? QUERIES.hourlyTimeseries.replace('AND blob1 NOT LIKE', `AND blob1 = '${chainFilter}' AND blob1 NOT LIKE`)
+          : QUERIES.hourlyTimeseries
+
+      const methodsQuery =
+        chainFilter && chainFilter !== 'all'
+          ? QUERIES.topMethods.replace('AND blob1 NOT LIKE', `AND blob1 = '${chainFilter}' AND blob1 NOT LIKE`)
+          : QUERIES.topMethods
+
+      const cacheQuery =
+        chainFilter && chainFilter !== 'all'
+          ? QUERIES.cachePerformance.replace('AND blob1 NOT LIKE', `AND blob1 = '${chainFilter}' AND blob1 NOT LIKE`)
+          : QUERIES.cachePerformance
+
+      const errorsQuery =
+        chainFilter && chainFilter !== 'all'
+          ? QUERIES.errorBreakdown.replace('AND blob1 NOT LIKE', `AND blob1 = '${chainFilter}' AND blob1 NOT LIKE`)
+          : QUERIES.errorBreakdown
+
       // Return all data for dashboard
       const [overview, chains, methods, timeseries, cache, errors] = await Promise.all([
-        queryAnalyticsEngine(accountId, apiToken, QUERIES.overview),
+        queryAnalyticsEngine(accountId, apiToken, overviewQuery),
         queryAnalyticsEngine(accountId, apiToken, QUERIES.chainStats),
-        queryAnalyticsEngine(accountId, apiToken, QUERIES.topMethods),
-        queryAnalyticsEngine(accountId, apiToken, QUERIES.hourlyTimeseries),
-        queryAnalyticsEngine(accountId, apiToken, QUERIES.cachePerformance),
-        queryAnalyticsEngine(accountId, apiToken, QUERIES.errorBreakdown)
+        queryAnalyticsEngine(accountId, apiToken, methodsQuery),
+        queryAnalyticsEngine(accountId, apiToken, timeseriesQuery),
+        queryAnalyticsEngine(accountId, apiToken, cacheQuery),
+        queryAnalyticsEngine(accountId, apiToken, errorsQuery)
       ])
 
       return createRawJsonResponse(
         JSON.stringify({
-          overview,
-          chains,
-          methods,
-          timeseries,
           cachePerformance: cache,
+          chainFilter: chainFilter || 'all',
+          chains,
           errors,
-          generatedAt: new Date().toISOString()
+          generatedAt: new Date().toISOString(),
+          methods,
+          overview,
+          timeseries
         })
       )
     }

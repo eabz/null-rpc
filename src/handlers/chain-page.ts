@@ -1,5 +1,3 @@
-import { createRawJsonResponse } from '@/utils'
-
 // Chain page HTML template
 function generateChainPage(chain: string, chainName: string): string {
   return `<!DOCTYPE html>
@@ -280,7 +278,7 @@ function generateChainPage(chain: string, chainName: string): string {
     <div class="container footer-content">
       <div class="footer-left">
         <img src="/logo.png" alt="NullRPC" class="footer-logo">
-        <span class="footer-text">© 2024 NullRPC</span>
+        <span class="footer-text">© 2025 NullRPC</span>
       </div>
       <div class="footer-links">
         <a href="https://github.com/0xeabz/null-rpc" target="_blank">
@@ -298,30 +296,79 @@ function generateChainPage(chain: string, chainName: string): string {
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     const CHAIN = '${chain}';
+
+    // Chain Configuration
+    const chainIcons = {
+      eth: 'https://s2.coinmarketcap.com/static/img/coins/128x128/1027.png',
+      bsc: 'https://cryptologos.cc/logos/bnb-bnb-logo.svg',
+      polygon: 'https://icons.llamao.fi/icons/chains/rsz_polygon.jpg',
+      arbitrum: 'https://s2.coinmarketcap.com/static/img/coins/128x128/11841.png',
+      optimism: 'https://cryptologos.cc/logos/optimism-ethereum-op-logo.svg',
+      base: 'https://avatars.githubusercontent.com/u/108554348?s=200&v=4',
+      unichain: 'https://icons.llamao.fi/icons/chains/rsz_unichain.jpg',
+      berachain: 'https://icons.llamao.fi/icons/chains/rsz_berachain.jpg',
+    };
+
+    const chainNames = {
+      eth: 'Ethereum',
+      bsc: 'Binance Smart Chain',
+      polygon: 'Polygon',
+      arbitrum: 'Arbitrum One',
+      optimism: 'Optimism',
+      base: 'Base',
+      unichain: 'Unichain',
+      berachain: 'Berachain',
+      plasma: 'Plasma',
+      katana: 'Katana Network',
+    };
+
+    const getDisplayName = (chain) => chainNames[chain] || chain;
+    
+    // Set chain icon
+    const iconUrl = chainIcons[CHAIN];
+    if (iconUrl) {
+      const heroContainer = document.querySelector('.hero .container');
+      const badge = heroContainer.querySelector('.chain-badge');
+      const iconImg = document.createElement('img');
+      iconImg.src = iconUrl;
+      iconImg.alt = getDisplayName(CHAIN);
+      iconImg.style.width = '64px';
+      iconImg.style.height = '64px';
+      iconImg.style.borderRadius = '50%';
+      iconImg.style.marginBottom = '24px';
+      iconImg.style.display = 'block';
+      iconImg.style.margin = '0 auto 24px auto';
+      
+      // Replace text badge with icon if available
+      badge.style.display = 'none';
+      heroContainer.insertBefore(iconImg, badge);
+    }
+    
+    // Set proper display name
+    document.querySelector('h1').textContent = getDisplayName(CHAIN);
+    document.title = \`\${getDisplayName(CHAIN)} RPC - NullRPC\`;
     
     async function loadAnalytics() {
       try {
-        const res = await fetch('/analytics/chains');
+        // Fetch chain-specific analytics
+        const res = await fetch(\`/analytics?chain=\${CHAIN}\`);
         const data = await res.json();
         
-        const chainData = data.find(c => c.chain === CHAIN);
-        if (chainData) {
-          document.getElementById('totalRequests').textContent = formatNumber(chainData.requests || 0);
-          document.getElementById('avgLatency').textContent = (chainData.avg_latency_ms || 0).toFixed(0) + 'ms';
+        if (data.overview && data.overview[0]) {
+          const ov = data.overview[0];
+          document.getElementById('totalRequests').textContent = formatNumber(ov.total_requests || 0);
+          document.getElementById('avgLatency').textContent = (ov.avg_latency_ms || 0).toFixed(0) + 'ms';
           
-          const cacheRate = chainData.cache_hits / (chainData.requests || 1) * 100;
+          const cacheRate = ov.cache_hits / (ov.total_requests || 1) * 100;
           document.getElementById('cacheHitRate').textContent = cacheRate.toFixed(1) + '%';
           
-          const errorRate = chainData.errors / (chainData.requests || 1) * 100;
+          const errorRate = ov.errors / (ov.total_requests || 1) * 100;
           document.getElementById('errorRate').textContent = errorRate.toFixed(2) + '%';
         }
         
         // Load timeseries
-        const tsRes = await fetch('/analytics/timeseries');
-        const tsData = await tsRes.json();
-        const chainTs = tsData.filter(t => t.chain === CHAIN);
-        if (chainTs.length > 0) {
-          renderChart(chainTs);
+        if (data.timeseries && data.timeseries.length > 0) {
+          renderChart(data.timeseries);
         }
       } catch (e) {
         console.error('Failed to load analytics:', e);
@@ -396,8 +443,8 @@ export async function handleChainPage(chain: string, env: Env): Promise<Response
 
     return new Response(html, {
       headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'public, max-age=60'
+        'Cache-Control': 'public, max-age=60',
+        'Content-Type': 'text/html; charset=utf-8'
       }
     })
   } catch {

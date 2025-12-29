@@ -1503,6 +1503,33 @@
     const mobileNavOverlay = document.getElementById('mobileNavOverlay');
     const mobileNavLinks = document.querySelectorAll('.mobile-nav a');
 
+    // Chain Configuration
+    const chainIcons = {
+      eth: 'https://s2.coinmarketcap.com/static/img/coins/128x128/1027.png',
+      bsc: 'https://cryptologos.cc/logos/bnb-bnb-logo.svg',
+      polygon: 'https://icons.llamao.fi/icons/chains/rsz_polygon.jpg',
+      arbitrum: 'https://s2.coinmarketcap.com/static/img/coins/128x128/11841.png',
+      optimism: 'https://cryptologos.cc/logos/optimism-ethereum-op-logo.svg',
+      base: 'https://avatars.githubusercontent.com/u/108554348?s=200&v=4',
+      unichain: 'https://icons.llamao.fi/icons/chains/rsz_unichain.jpg',
+      berachain: 'https://icons.llamao.fi/icons/chains/rsz_berachain.jpg',
+    };
+
+    const chainNames = {
+      eth: 'Ethereum',
+      bsc: 'Binance Smart Chain',
+      polygon: 'Polygon',
+      arbitrum: 'Arbitrum One',
+      optimism: 'Optimism',
+      base: 'Base',
+      unichain: 'Unichain',
+      berachain: 'Berachain',
+      plasma: 'Plasma',
+      katana: 'Katana Network',
+    };
+
+    const getDisplayName = (chain) => chainNames[chain.slug] || chain.name || chain.slug;
+
     function toggleMobileMenu() {
       mobileMenuBtn.classList.toggle('active');
       mobileNavOverlay.classList.toggle('active');
@@ -1603,34 +1630,7 @@
         const grid = document.getElementById('chainsGrid');
         const dropdownMenu = document.getElementById('dropdownMenu');
         
-        // Custom icon mapping for reliable logos
-        const chainIcons = {
-          eth: 'https://s2.coinmarketcap.com/static/img/coins/128x128/1027.png',
-          bsc: 'https://cryptologos.cc/logos/bnb-bnb-logo.svg',
-          polygon: 'https://icons.llamao.fi/icons/chains/rsz_polygon.jpg',
-          arbitrum: 'https://s2.coinmarketcap.com/static/img/coins/128x128/11841.png',
-          optimism: 'https://cryptologos.cc/logos/optimism-ethereum-op-logo.svg',
-          base: 'https://avatars.githubusercontent.com/u/108554348?s=200&v=4',
-          unichain: 'https://icons.llamao.fi/icons/chains/rsz_unichain.jpg',
-          berachain: 'https://icons.llamao.fi/icons/chains/rsz_berachain.jpg',
-        };
-        
-        // Custom display names for chains
-        const chainNames = {
-          eth: 'Ethereum',
-          bsc: 'Binance Smart Chain',
-          polygon: 'Polygon',
-          arbitrum: 'Arbitrum One',
-          optimism: 'Optimism',
-          base: 'Base',
-          unichain: 'Unichain',
-          berachain: 'Berachain',
-          plasma: 'Plasma',
-          katana: 'Katana Network',
-        };
-        
-        // Helper to get display name
-        const getDisplayName = (chain) => chainNames[chain.slug] || chain.name || chain.slug;
+
         
         if (data.chains && data.chains.length > 0) {
           grid.innerHTML = data.chains.map(chain => {
@@ -1752,7 +1752,8 @@
       document.getElementById('dropdownTrigger').classList.remove('active');
       document.getElementById('dropdownMenu').classList.remove('open');
       
-      // TODO: Filter analytics by chain
+      // Reload analytics with filter
+      loadAnalytics(value);
     }
 
     // Setup dropdown event listeners
@@ -1768,9 +1769,12 @@
     });
 
     // Fetch analytics data
-    async function loadAnalytics() {
+    async function loadAnalytics(chainFilter = 'all') {
       try {
-        const res = await fetch('/analytics');
+        const url = chainFilter && chainFilter !== 'all' 
+          ? `/analytics?chain=${chainFilter}` 
+          : '/analytics';
+        const res = await fetch(url);
         const data = await res.json();
 
         // Overview stats
@@ -1784,11 +1788,19 @@
           
           const errorRate = ov.errors / (ov.total_requests || 1) * 100;
           document.getElementById('errorRate').textContent = errorRate.toFixed(2) + '%';
+        } else {
+          // No data for this filter
+          document.getElementById('totalRequests').textContent = '0';
+          document.getElementById('avgLatency').textContent = '0ms';
+          document.getElementById('cacheHitRate').textContent = '0%';
+          document.getElementById('errorRate').textContent = '0%';
         }
 
         // Chart
         if (data.timeseries && data.timeseries.length > 0) {
-          renderChart(data.timeseries);
+          renderChart(data.timeseries, chainFilter);
+        } else {
+          renderChart([], chainFilter);
         }
       } catch (e) {
         console.error('Failed to load analytics:', e);
@@ -1804,7 +1816,7 @@
     // Store chart instance globally to destroy before recreating
     let requestsChartInstance = null;
 
-    function renderChart(timeseries) {
+    function renderChart(timeseries, chainFilter) {
       const canvas = document.getElementById('requestsChart');
       
       // Destroy existing chart if it exists (handles hot reload)
@@ -1825,6 +1837,10 @@
       const labels = Object.keys(hourlyData).sort().slice(-24);
       const values = labels.map(h => hourlyData[h]);
 
+      const chainName = chainFilter && chainFilter !== 'all' 
+        ? (chainNames[chainFilter] || chainFilter) 
+        : 'Total';
+
       const ctx = canvas.getContext('2d');
       requestsChartInstance = new Chart(ctx, {
         type: 'line',
@@ -1834,7 +1850,7 @@
             return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           }),
           datasets: [{
-            label: 'Requests',
+            label: `${chainName} Requests`,
             data: values,
             borderColor: '#00D4FF',
             backgroundColor: 'rgba(0, 212, 255, 0.1)',
