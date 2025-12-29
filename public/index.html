@@ -290,6 +290,8 @@
     .chain-icon {
       width: 48px;
       height: 48px;
+      min-width: 48px;
+      min-height: 48px;
       border-radius: 50%;
       background: linear-gradient(135deg, var(--ether-blue), var(--cyan-ray));
       display: flex;
@@ -298,6 +300,14 @@
       font-weight: 700;
       color: white;
       font-size: 18px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .chain-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .chain-info h4 {
@@ -789,9 +799,13 @@
         const dropdownMenu = document.getElementById('dropdownMenu');
         
         if (data.chains && data.chains.length > 0) {
-          grid.innerHTML = data.chains.map(chain => `
+          grid.innerHTML = data.chains.map(chain => {
+            const iconContent = chain.icon 
+              ? `<img src="${chain.icon}" alt="${chain.name}" onerror="this.style.display='none'; this.parentElement.textContent='${chain.slug.slice(0, 2).toUpperCase()}';">`
+              : chain.slug.slice(0, 2).toUpperCase();
+            return `
             <div class="chain-card">
-              <div class="chain-icon">${chain.slug.slice(0, 2).toUpperCase()}</div>
+              <div class="chain-icon">${iconContent}</div>
               <div class="chain-info">
                 <h4>${chain.name || chain.slug}</h4>
                 <span class="endpoint">nullrpc.dev/${chain.slug}</span>
