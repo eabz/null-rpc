@@ -648,10 +648,130 @@
       to { transform: rotate(360deg); }
     }
 
-    /* Responsive */
+    /* Mobile Menu */
+    .mobile-menu-btn {
+      display: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      z-index: 1001;
+    }
+
+    .mobile-menu-btn span {
+      display: block;
+      width: 24px;
+      height: 2px;
+      background: var(--terminal-grey);
+      margin: 5px 0;
+      transition: all 0.3s ease;
+    }
+
+    .mobile-menu-btn.active span:nth-child(1) {
+      transform: rotate(45deg) translate(5px, 5px);
+    }
+
+    .mobile-menu-btn.active span:nth-child(2) {
+      opacity: 0;
+    }
+
+    .mobile-menu-btn.active span:nth-child(3) {
+      transform: rotate(-45deg) translate(5px, -5px);
+    }
+
+    .mobile-nav-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(5, 5, 16, 0.95);
+      backdrop-filter: blur(10px);
+      z-index: 999;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .mobile-nav-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .mobile-nav {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 32px;
+    }
+
+    .mobile-nav a {
+      color: var(--white);
+      text-decoration: none;
+      font-size: 24px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .mobile-nav a:hover {
+      color: var(--cyan-ray);
+    }
+
+    /* Responsive - Tablet (1024px) */
+    @media (max-width: 1024px) {
+      .features {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+      }
+
+      .analytics-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+      }
+
+      .hero h1 {
+        font-size: 52px;
+      }
+
+      .section-title {
+        font-size: 30px;
+      }
+    }
+
+    /* Responsive - Mobile (768px) */
     @media (max-width: 768px) {
+      .mobile-menu-btn {
+        display: block;
+      }
+
+      .mobile-nav-overlay {
+        display: block;
+      }
+
+      .nav-links {
+        display: none;
+      }
+
       .hero {
         padding: 60px 0;
+      }
+
+      .hero-logo-wrapper {
+        width: 120px;
+        height: 120px;
+      }
+
+      .hero-logo {
+        width: 120px;
+        height: 120px;
+      }
+
+      .hero-logo-glow {
+        width: 220px;
+        height: 220px;
       }
 
       .hero h1 {
@@ -664,22 +784,40 @@
 
       .hero .subtitle {
         font-size: 14px;
+        padding: 0 16px;
       }
 
       .endpoint-box {
         padding: 16px 20px;
         flex-direction: column;
         gap: 12px;
+        width: calc(100% - 32px);
+        max-width: 400px;
       }
 
       .endpoint-box code {
         font-size: 14px;
+        word-break: break-all;
+        text-align: center;
       }
 
       .features {
         grid-template-columns: 1fr;
         gap: 16px;
         padding: 40px 0;
+      }
+
+      .feature {
+        padding: 24px;
+      }
+
+      .section-title {
+        font-size: 26px;
+        padding: 0 16px;
+      }
+
+      .section-subtitle {
+        padding: 0 16px;
       }
 
       .chains-section {
@@ -696,16 +834,44 @@
         flex-wrap: wrap;
       }
 
+      .chain-info {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .chain-info h4 {
+        font-size: 15px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .chain-info .endpoint {
+        font-size: 11px;
+      }
+
       .chain-stats {
         width: 100%;
         margin-left: 0;
         margin-top: 12px;
-        justify-content: flex-start;
-        gap: 20px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(0, 212, 255, 0.1);
+        justify-content: space-around;
+        gap: 12px;
       }
 
       .analytics-section {
         padding: 40px 0;
+      }
+
+      .analytics-controls {
+        padding: 0 16px;
+      }
+
+      .custom-dropdown {
+        min-width: 200px;
+        width: 100%;
+        max-width: 100%;
       }
 
       .analytics-grid {
@@ -718,30 +884,33 @@
       }
 
       .stat-value {
-        font-size: 24px;
+        font-size: 22px;
+      }
+
+      .stat-label {
+        font-size: 12px;
       }
 
       .chart-container {
-        padding: 20px;
+        padding: 16px;
+        margin: 0;
       }
 
-      .custom-dropdown {
-        min-width: 200px;
-        width: 100%;
-        max-width: 300px;
+      .chart-title {
+        font-size: 16px;
+      }
+
+      .chart-wrapper {
+        height: 250px;
       }
 
       .header-content {
-        flex-wrap: wrap;
-        gap: 16px;
+        padding: 0 16px;
       }
 
-      .nav-links {
-        gap: 16px;
-      }
-
-      .nav-links a {
-        font-size: 13px;
+      footer {
+        padding: 32px 0;
+        margin-top: 40px;
       }
 
       .footer-content {
@@ -750,39 +919,209 @@
         text-align: center;
       }
 
+      .footer-left {
+        flex-direction: column;
+        gap: 12px;
+      }
+
       .footer-links {
         justify-content: center;
+        gap: 20px;
       }
     }
 
+    /* Responsive - Small Mobile (480px) */
     @media (max-width: 480px) {
       .container {
-        padding: 0 16px;
+        padding: 0 12px;
+      }
+
+      .hero {
+        padding: 40px 0;
+      }
+
+      .hero-logo-wrapper {
+        width: 100px;
+        height: 100px;
+        margin-bottom: 24px;
+      }
+
+      .hero-logo {
+        width: 100px;
+        height: 100px;
+      }
+
+      .hero-logo-glow {
+        width: 180px;
+        height: 180px;
       }
 
       .hero h1 {
         font-size: 32px;
+        margin-bottom: 16px;
       }
 
       .hero .tagline {
         font-size: 16px;
+        margin-bottom: 12px;
       }
 
-      .analytics-grid {
-        grid-template-columns: 1fr;
+      .hero .subtitle {
+        font-size: 13px;
+        margin-bottom: 32px;
       }
 
-      .stat-value {
-        font-size: 20px;
-      }
-
-      .nav-links {
-        gap: 12px;
+      .endpoint-box {
+        padding: 14px 16px;
+        border-radius: 10px;
       }
 
       .endpoint-box code {
+        font-size: 11px;
+      }
+
+      .copy-btn {
+        padding: 8px 20px;
+        font-size: 13px;
+        width: 100%;
+      }
+
+      .section-title {
+        font-size: 22px;
+      }
+
+      .features {
+        padding: 32px 0;
+      }
+
+      .feature {
+        padding: 20px;
+      }
+
+      .feature-icon {
+        font-size: 28px;
+        margin-bottom: 12px;
+      }
+
+      .feature h3 {
+        font-size: 16px;
+      }
+
+      .feature p {
+        font-size: 13px;
+      }
+
+      .chains-section,
+      .analytics-section {
+        padding: 32px 0;
+      }
+
+      .chain-icon {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        min-height: 40px;
+        font-size: 14px;
+      }
+
+      .chain-info h4 {
+        font-size: 14px;
+      }
+
+      .chain-info .endpoint {
+        font-size: 10px;
+      }
+
+      .chain-stat .count {
+        font-size: 13px;
+      }
+
+      .chain-stat .label {
+        font-size: 9px;
+      }
+
+      .analytics-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .stat-card {
+        padding: 12px;
+      }
+
+      .stat-value {
+        font-size: 18px;
+      }
+
+      .stat-label {
+        font-size: 11px;
+      }
+
+      .chart-container {
+        padding: 12px;
+      }
+
+      .chart-title {
+        font-size: 14px;
+        margin-bottom: 16px;
+      }
+
+      .chart-wrapper {
+        height: 200px;
+      }
+
+      .dropdown-trigger {
+        padding: 12px 16px;
+        font-size: 14px;
+      }
+
+      .mobile-nav a {
+        font-size: 20px;
+      }
+
+      footer {
+        padding: 24px 0;
+        margin-top: 32px;
+      }
+
+      .footer-logo {
+        height: 28px;
+      }
+
+      .footer-text {
         font-size: 12px;
-        word-break: break-all;
+      }
+
+      .footer-links a {
+        font-size: 13px;
+      }
+
+      .footer-links svg {
+        width: 18px;
+        height: 18px;
+      }
+    }
+
+    /* Very Small Mobile (360px) */
+    @media (max-width: 360px) {
+      .hero h1 {
+        font-size: 28px;
+      }
+
+      .hero .tagline {
+        font-size: 14px;
+      }
+
+      .endpoint-box code {
+        font-size: 10px;
+      }
+
+      .section-title {
+        font-size: 20px;
+      }
+
+      .stat-value {
+        font-size: 16px;
       }
     }
   </style>
@@ -796,8 +1135,22 @@
         <a href="#analytics">Analytics</a>
         <a href="https://github.com/eabz/null-rpc" target="_blank">GitHub</a>
       </nav>
+      <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle mobile menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
     </div>
   </header>
+
+  <!-- Mobile Navigation Overlay -->
+  <div class="mobile-nav-overlay" id="mobileNavOverlay">
+    <nav class="mobile-nav">
+      <a href="#chains" class="mobile-nav-link">Chains</a>
+      <a href="#analytics" class="mobile-nav-link">Analytics</a>
+      <a href="https://github.com/eabz/null-rpc" target="_blank">GitHub</a>
+    </nav>
+  </div>
 
   <main>
     <!-- Hero Section -->
@@ -920,6 +1273,28 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
   <script>
+    // Mobile Menu Toggle
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const mobileNavOverlay = document.getElementById('mobileNavOverlay');
+    const mobileNavLinks = document.querySelectorAll('.mobile-nav a');
+
+    function toggleMobileMenu() {
+      mobileMenuBtn.classList.toggle('active');
+      mobileNavOverlay.classList.toggle('active');
+      document.body.style.overflow = mobileNavOverlay.classList.contains('active') ? 'hidden' : '';
+    }
+
+    mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+
+    // Close mobile menu when a link is clicked
+    mobileNavLinks.forEach(link => {
+      link.addEventListener('click', () => {
+        mobileMenuBtn.classList.remove('active');
+        mobileNavOverlay.classList.remove('active');
+        document.body.style.overflow = '';
+      });
+    });
+
     // Copy endpoint to clipboard
     function copyEndpoint() {
       navigator.clipboard.writeText('https://nullrpc.dev/eth');

@@ -1,54 +1,58 @@
 {
-  "name": "null-rpc",
-  "main": "src/index.ts",
+	"name": "null-rpc",
+	"main": "src/index.ts",
 	"compatibility_date": "2025-12-25",
-  "assets": {
-    "directory": "./public"
-  },
-  "observability": {
-    "enabled": false
-  },
-  "analytics_engine_datasets": [
-    {
-      "binding": "ANALYTICS",
-      "dataset": "null_rpc_metrics"
-    }
-  ],
-  "unsafe": {
-    "bindings": [
-      {
-        "name": "RATE_LIMITER",
-        "type": "ratelimit",
-        "namespace_id": "1001",
-        "simple": {
-          "limit": 200,
-          "period": 10
-        }
-      }
-    ]
-  },
-"d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "null-rpc-db",
-      "database_id": "fd142855-f850-445e-bfb7-c3969188bda4"
-    }
-  ],
-  "durable_objects": {
-    "bindings": [
-      {
-        "name": "CHAIN_DO",
-        "class_name": "ChainDO"
-      }
-    ]
-  },
-  "migrations": [
-    {
-      "tag": "v4",
-      "new_classes": ["ChainDO"]
-    }
-  ],
-  "triggers": {
-    "crons": ["0 * * * *"]
-  }
+	"assets": {
+		"directory": "./public"
+	},
+	"observability": {
+		"enabled": false
+	},
+	"analytics_engine_datasets": [
+		{
+			"binding": "ANALYTICS",
+			"dataset": "null_rpc_metrics"
+		}
+	],
+	"unsafe": {
+		"bindings": [
+			{
+				"name": "RATE_LIMITER",
+				"type": "ratelimit",
+				"namespace_id": "1001",
+				"simple": {
+					"limit": 200,
+					"period": 10
+				}
+			}
+		]
+	},
+	"d1_databases": [
+		{
+			"binding": "null_rpc_db",
+			"database_name": "null-rpc-db",
+			"database_id": "f1d11ed8-da8d-47f3-93f1-816d1919048a"
+		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "CHAIN_DO",
+				"class_name": "ChainDO"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v4",
+			"new_classes": [
+				"ChainDO"
+			]
+		}
+	],
+	"triggers": {
+		"crons": [
+			"0 * * * *"
+		]
+	}
 }

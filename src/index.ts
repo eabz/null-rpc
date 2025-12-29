@@ -169,8 +169,18 @@ export default {
     return new Response('Not Found', { status: 404 })
   },
 
-  async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    ctx.waitUntil(syncPublicNodes(env))
+  async scheduled(_controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
+    console.log('[Scheduled] Handler triggered')
+    console.log('[Scheduled] DB binding exists:', !!env.DB)
+    try {
+      console.log('[Scheduled] Starting syncPublicNodes...')
+      await syncPublicNodes(env)
+      console.log('[Scheduled] Cron job completed successfully')
+    } catch (error) {
+      console.error('[Scheduled] Cron job failed:', error instanceof Error ? error.message : String(error))
+      console.error('[Scheduled] Stack:', error instanceof Error ? error.stack : 'No stack')
+      throw error
+    }
   }
 } satisfies ExportedHandler<Env>
 

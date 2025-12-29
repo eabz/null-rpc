@@ -21,7 +21,7 @@ export async function handleChains(env: Env): Promise<Response> {
       const nodes = row.nodes ? JSON.parse(row.nodes as string) : []
       const archiveNodes = row.archive_nodes ? JSON.parse(row.archive_nodes as string) : []
       const mevNodes = row.mev_protection ? JSON.parse(row.mev_protection as string) : []
-      
+
       // Construct icon URL from icon name (using llamao.fi CDN)
       const iconName = row.icon as string | null
       const iconUrl = iconName ? `https://icons.llamao.fi/icons/chains/rsz_${iconName}.jpg` : null

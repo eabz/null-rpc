@@ -8,6 +8,8 @@ CREATE TABLE chains (
   nodes TEXT, -- JSON array of standard nodes
   archive_nodes TEXT, -- JSON array of archive nodes
   mev_protection TEXT, -- string URL or JSON
+  icon TEXT,
+  name TEXT,
   created_at INTEGER DEFAULT (unixepoch()),
   updated_at INTEGER DEFAULT (unixepoch())
 );
