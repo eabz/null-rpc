@@ -1,6 +1,6 @@
 # NullRPC
 
-High-performance, privacy-focused Ethereum JSON-RPC proxy built on Cloudflare Workers. Designed for speed, reliability, and zero-logging privacy.
+Privacy-first RPC Proxy for EVM networks built on Cloudflare Workers. Designed for speed, reliability, and zero-logging privacy.
 
 ## Features
 

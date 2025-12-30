@@ -5,21 +5,21 @@ function generateChainPage(chain: string, chainName: string): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${chainName} RPC - NullRPC</title>
-  <meta name="description" content="Free, privacy-focused RPC endpoint for ${chainName}. No IP logging. No tracking.">
+  <title>NullRPC - Privacy-first RPC Proxy for EVM networks</title>
+  <meta name="description" content="NullRPC is a privacy-first RPC Proxy for EVM networks. No IP logging. No tracking.">
   
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://nullrpc.dev/${chain}">
-  <meta property="og:title" content="${chainName} RPC - NullRPC">
-  <meta property="og:description" content="Free, privacy-focused RPC endpoint for ${chainName}. No IP logging. No tracking.">
+  <meta property="og:title" content="NullRPC - Privacy-first RPC Proxy for EVM networks">
+  <meta property="og:description" content="NullRPC is a privacy-first RPC Proxy for EVM networks. No IP logging. No tracking.">
   <meta property="og:image" content="https://imagedelivery.net/vgqvCj4Mw_NLJNB76Px9jg/c7f2ed26-ab1f-4cd0-1568-b1ff4c32ed00/public">
 
   <!-- Twitter -->
   <meta property="twitter:card" content="summary_large_image">
   <meta property="twitter:url" content="https://nullrpc.dev/${chain}">
-  <meta property="twitter:title" content="${chainName} RPC - NullRPC">
-  <meta property="twitter:description" content="Free, privacy-focused RPC endpoint for ${chainName}. No IP logging. No tracking.">
+  <meta property="twitter:title" content="NullRPC - Privacy-first RPC Proxy for EVM networks">
+  <meta property="twitter:description" content="NullRPC is a privacy-first RPC Proxy for EVM networks. No IP logging. No tracking.">
   <meta property="twitter:image" content="https://imagedelivery.net/vgqvCj4Mw_NLJNB76Px9jg/c7f2ed26-ab1f-4cd0-1568-b1ff4c32ed00/public">
   
   <link rel="icon" type="image/x-icon" href="/favicon.ico">

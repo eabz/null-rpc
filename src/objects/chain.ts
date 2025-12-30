@@ -96,7 +96,7 @@ export class ChainDO extends DurableObject<Env> {
       if (lastParam === 'earliest') return true
       // Hex block number - if it's a low number, likely needs archive
       if (lastParam.startsWith('0x')) {
-        const blockNum = parseInt(lastParam, 16)
+        const blockNum = Number.parseInt(lastParam, 16)
         // Consider blocks older than 128 as needing archive (safe head distance)
         if (blockNum > 0 && blockNum < 15000000) return true // Rough heuristic for ETH
       }
@@ -124,8 +124,8 @@ export class ChainDO extends DurableObject<Env> {
     const nodes = this.chainData?.nodes || []
     if (nodes.length === 0) {
       return new Response(JSON.stringify({ error: 'No nodes available' }), {
-        status: 503,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        status: 503
       })
     }
 
@@ -136,8 +136,8 @@ export class ChainDO extends DurableObject<Env> {
     }
 
     return new Response(JSON.stringify({ error: 'All nodes failed for transaction' }), {
-      status: 502,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
+      status: 502
     })
   }
 
@@ -170,8 +170,8 @@ export class ChainDO extends DurableObject<Env> {
 
     if (nodes.length === 0) {
       return new Response(JSON.stringify({ error: `No nodes available for ${chainSlug}` }), {
-        status: 503,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        status: 503
       })
     }
 
@@ -182,8 +182,8 @@ export class ChainDO extends DurableObject<Env> {
     }
 
     return new Response(JSON.stringify({ error: 'All upstream nodes failed' }), {
-      status: 502,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
+      status: 502
     })
   }
 
@@ -199,12 +199,12 @@ export class ChainDO extends DurableObject<Env> {
 
       if (result) {
         this.chainData = {
-          id: result.id as number,
-          slug: result.slug as string,
-          chainId: result.chainId as number,
-          nodes: JSON.parse((result.nodes as string) || '[]'),
           archive_nodes: JSON.parse((result.archive_nodes as string) || '[]'),
-          mev_nodes: result.mev_protection ? JSON.parse(result.mev_protection as string) : []
+          chainId: result.chainId as number,
+          id: result.id as number,
+          mev_nodes: result.mev_protection ? JSON.parse(result.mev_protection as string) : [],
+          nodes: JSON.parse((result.nodes as string) || '[]'),
+          slug: result.slug as string
         }
         this.lastSync = now
       } else {
@@ -236,9 +236,9 @@ export class ChainDO extends DurableObject<Env> {
       return response
     } catch (e: unknown) {
       const errorMessage = e instanceof Error ? e.message : 'Unknown error'
-      return new Response(JSON.stringify({ error: 'Upstream connection failed', details: errorMessage }), {
-        status: 502,
-        headers: { 'Content-Type': 'application/json' }
+      return new Response(JSON.stringify({ details: errorMessage, error: 'Upstream connection failed' }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 502
       })
     }
   }
