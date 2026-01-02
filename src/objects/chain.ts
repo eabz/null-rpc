@@ -51,7 +51,7 @@ export class ChainDO extends DurableObject<Env> {
           id: p.id,
           jsonrpc: '2.0',
           method: p.method,
-          params: p.params
+          params: p.params ?? []
         }))
         // Note: We don't inspect batch methods for routing yet, defaults to standard
       } else {
@@ -60,10 +60,10 @@ export class ChainDO extends DurableObject<Env> {
           id: parsed.id,
           jsonrpc: '2.0',
           method: parsed.method,
-          params: parsed.params
+          params: parsed.params ?? []
         }
         method = parsed.method || 'unknown'
-        params = parsed.params || []
+        params = parsed.params ?? []
       }
 
       // Create new request with clean payload
