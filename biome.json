@@ -111,7 +111,7 @@
         "noConsole": {
           "level": "error",
           "options": {
-            "allow": ["log"]
+            "allow": ["log", "error", "warn", "debug"]
           }
         },
         "noDuplicateElseIf": "error",

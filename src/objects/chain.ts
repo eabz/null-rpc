@@ -13,11 +13,8 @@ export class ChainDO extends DurableObject<Env> {
   // Simple in-memory cache for chain data
   private chainData: ChainData | null = null
   private lastSync = 0
+  // biome-ignore lint/style/useNamingConvention: constant
   private readonly SYNC_INTERVAL = 60_000 // 1 minute
-
-  constructor(ctx: DurableObjectState, env: Env) {
-    super(ctx, env)
-  }
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url)
@@ -49,6 +46,7 @@ export class ChainDO extends DurableObject<Env> {
 
       if (Array.isArray(parsed)) {
         // Batch Request: Sanitize every item
+        // biome-ignore lint/suspicious/noExplicitAny: Dynamic JSON payload
         sanitized = parsed.map((p: any) => ({
           id: p.id,
           jsonrpc: '2.0',

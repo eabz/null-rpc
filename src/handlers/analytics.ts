@@ -48,6 +48,7 @@ async function queryAnalyticsEngine(accountId: string, apiToken: string, query: 
   const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/analytics_engine/sql`, {
     body: query,
     headers: {
+      // biome-ignore lint/style/useNamingConvention: required
       Authorization: `Bearer ${apiToken}`,
       'Content-Type': 'text/plain'
     },

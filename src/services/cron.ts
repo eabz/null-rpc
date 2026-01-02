@@ -57,8 +57,12 @@ async function fetchChainlist(): Promise<ChainlistEntry[]> {
 /**
  * Extract HTTP RPC URLs from a chainlist entry
  */
+/**
+ * Extract HTTP RPC URLs from a chainlist entry
+ */
 function extractRpcUrls(entry: ChainlistEntry): string[] {
-  const urls: string[] = []
+  // Use Set for automatic deduplication
+  const urls = new Set<string>()
 
   for (const rpc of entry.rpc) {
     const url = typeof rpc === 'string' ? rpc : rpc.url
@@ -70,21 +74,26 @@ function extractRpcUrls(entry: ChainlistEntry): string[] {
 
     // Only include HTTP(S) URLs
     if (url.startsWith('http://') || url.startsWith('https://')) {
-      urls.push(url)
+      // Clean trailing slashes for better deduplication
+      const cleanUrl = url.replace(/\/+$/, '')
+      urls.add(cleanUrl)
     }
   }
 
-  return urls
+  return Array.from(urls)
 }
 
 /**
  * Test if an RPC endpoint returns the expected chain ID
  */
+/**
+ * Test if an RPC endpoint returns the expected chain ID
+ */
 async function testChainId(url: string, expectedChainId: number): Promise<boolean> {
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 5000)
 
+  try {
     const response = await fetch(url, {
       body: JSON.stringify({
         id: 1,
@@ -97,30 +106,20 @@ async function testChainId(url: string, expectedChainId: number): Promise<boolea
       signal: controller.signal
     })
 
-    clearTimeout(timeout)
-
-    if (!response.ok) {
-      return false
-    }
+    if (!response.ok) return false
 
     const data = (await response.json()) as { result?: string; error?: unknown }
 
-    if (data.error || !data.result) {
-      return false
-    }
+    if (data.error || !data.result) return false
 
     // Parse hex chain ID
     const chainId = Number.parseInt(data.result, 16)
-    const isValid = chainId === expectedChainId
-
-    if (isValid) {
-      console.log(`[Cron] ✓ Valid node: ${url}`)
-    }
-
-    return isValid
+    return chainId === expectedChainId
   } catch (_) {
-    // Silently fail - node is not reachable
+    // Silently fail - node is not reachable or invalid
     return false
+  } finally {
+    clearTimeout(timeout)
   }
 }
 
@@ -129,10 +128,10 @@ async function testChainId(url: string, expectedChainId: number): Promise<boolea
  * by requesting balance at block 1
  */
 async function testArchiveCapability(url: string): Promise<boolean> {
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 3000) // Reduced timeout
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 3000)
 
+  try {
     const response = await fetch(url, {
       body: JSON.stringify({
         id: 1,
@@ -145,21 +144,23 @@ async function testArchiveCapability(url: string): Promise<boolean> {
       signal: controller.signal
     })
 
-    clearTimeout(timeout)
-
     if (!response.ok) return false
 
     const data = (await response.json()) as { result?: string; error?: unknown }
 
     // Archive nodes can serve historical state, so they return a result
-    // Non-archive nodes typically return an error about missing trie node
     return !data.error && typeof data.result === 'string'
   } catch {
     return false
+  } finally {
+    clearTimeout(timeout)
   }
 }
+
 /**
  * Validate all RPC URLs for a chain and categorize as regular or archive nodes
+ *
+ * Implements STRICT SERIAL execution with robust error handling to prevent runtime crashes.
  */
 async function validateChainNodes(
   rpcUrls: string[],
@@ -168,28 +169,30 @@ async function validateChainNodes(
   const nodes: string[] = []
   const archiveNodes: string[] = []
 
-  // Heavy batch - test all nodes in parallel for speed
-  // Cloudflare charges for compute time, not requests
-  const results = await Promise.allSettled(
-    rpcUrls.map(async (url) => {
-      // Run chainId and archive tests concurrently
-      const [validChainId, isArchive] = await Promise.all([
-        testChainId(url, expectedChainId),
-        testArchiveCapability(url)
-      ])
+  // Serial processing (1 at a time)
+  for (let i = 0; i < rpcUrls.length; i++) {
+    const url = rpcUrls[i]
+    console.log(`[Cron] Checking ${i + 1}/${rpcUrls.length}: ${url}`)
 
-      if (!validChainId) return null
-      return { isArchive, url }
-    })
-  )
+    try {
+      // 1. Check Chain ID first
+      const isValid = await testChainId(url, expectedChainId)
 
-  for (const result of results) {
-    if (result.status === 'fulfilled' && result.value) {
-      nodes.push(result.value.url)
-      if (result.value.isArchive) {
-        archiveNodes.push(result.value.url)
+      if (isValid) {
+        nodes.push(url)
+
+        // 2. Only check Archive capability if valid
+        const isArchive = await testArchiveCapability(url)
+        if (isArchive) {
+          archiveNodes.push(url)
+        }
       }
+    } catch (_) {
+      // Ignore any other unexpected errors and continue to next node
     }
+
+    // Small breathe to ensure socket cleanup
+    await new Promise((resolve) => setTimeout(resolve, 50))
   }
 
   return { archiveNodes, nodes }

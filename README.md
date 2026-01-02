@@ -20,10 +20,10 @@ NullRPC provides dedicated endpoints for the following networks:
 | **Arbitrum One** | `/arbitrum` | Arbitrum Optimistic Rollup |
 | **Optimism** | `/optimism` | Optimism Mainnet |
 | **Base** | `/base` | Base L2 |
-| **Unichain** | `/unichain` | Unichain Testnet/Mainnet |
-| **Berachain** | `/berachain` | Berachain Testnet/Mainnet |
+| **Unichain** | `/unichain` | Unichain Mainnet |
+| **Berachain** | `/berachain` | Berachain Mainnet |
 | **Plasma** | `/plasma` | Plasma Network |
-| **Katana Network** | `/katana` | Ronin/Katana Sidechain |
+| **Katana Network** | `/katana` | Katana Mainnet |
 
 ## Usage
 
