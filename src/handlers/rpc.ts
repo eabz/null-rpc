@@ -1,6 +1,6 @@
 import { cacheResponse, calculateCacheKey, getCachedResponse, getCacheTtl } from '@/services'
 import type { AnalyticsData } from '@/types'
-import { createJsonResponse, getContentLength, trackRequest } from '@/utils'
+import { getContentLength, trackRequest } from '@/utils'
 
 // Global round-robin is now handled by DO or per-request within DO
 
@@ -14,8 +14,8 @@ export async function handleRequest(
 
   // Analytics data we'll populate as we go
   let method = 'unknown'
+  let isValidRpc = false
   let cacheStatus: AnalyticsData['cacheStatus'] = 'NONE'
-  let errorType: string | undefined
   let requestSize = 0
 
   // Try caching only if we have a context (sanity check)
@@ -33,11 +33,35 @@ export async function handleRequest(
         const bodyText = await requestBodyClone.text()
         requestSize = bodyText.length
 
-        const requestBody: { method: string; params: unknown[] } = JSON.parse(bodyText)
-        // Extract method for analytics
-        if (requestBody?.method) {
-          method = requestBody.method
+        const parsed = JSON.parse(bodyText)
+
+        // Validate JSON-RPC 2.0
+        // Handle Batch
+        if (Array.isArray(parsed)) {
+          if (
+            parsed.length > 0 &&
+            parsed.every(
+              (p: unknown) =>
+                typeof p === 'object' &&
+                p !== null &&
+                'jsonrpc' in p &&
+                (p as { jsonrpc: unknown }).jsonrpc === '2.0' &&
+                'method' in p &&
+                typeof (p as { method: unknown }).method === 'string'
+            )
+          ) {
+            isValidRpc = true
+            method = 'batch'
+          }
+        }
+        // Handle Single
+        else if (parsed?.jsonrpc === '2.0' && typeof parsed?.method === 'string') {
+          isValidRpc = true
+          method = parsed.method
+
+          const requestBody = parsed as { method: string; params: unknown[] }
           ttl = getCacheTtl(requestBody.method, requestBody.params)
+
           if (ttl > 0 && ctx) {
             cacheKeyUrl = await calculateCacheKey(chain, requestBody)
             cachedResponse = await getCachedResponse(cacheKeyUrl)
@@ -48,12 +72,10 @@ export async function handleRequest(
         }
       } catch (_) {
         // Invalid JSON, proceed without caching
-        errorType = 'invalid_json'
       }
     }
   } catch (_) {
     // Cloning error or something, ignore caching
-    errorType = 'request_error'
   }
 
   if (cachedResponse) {
@@ -61,7 +83,7 @@ export async function handleRequest(
     response.headers.set('X-NullRPC-Cache', 'HIT')
 
     // Track cached response
-    if (ctx) {
+    if (ctx && isValidRpc) {
       trackRequest(env, ctx, {
         cacheStatus: 'HIT',
         chain,
@@ -85,9 +107,8 @@ export async function handleRequest(
   const responseSize = getContentLength(response.headers)
 
   // Track the request
-  if (ctx) {
+  if (ctx && isValidRpc) {
     const successful = response.ok
-    const finalError = successful ? undefined : 'opt_failed' // Or parse error
 
     trackRequest(env, ctx, {
       cacheStatus: cacheStatus === 'HIT' ? 'HIT' : ttl > 0 ? 'MISS' : 'BYPASS',

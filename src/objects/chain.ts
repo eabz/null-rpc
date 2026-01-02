@@ -29,32 +29,71 @@ export class ChainDO extends DurableObject<Env> {
       return new Response(`Chain ${chainSlug} not configured in DB`, { status: 404 })
     }
 
-    // Clone request for inspection
-    const clone = request.clone()
+    // -------------------------------------------------------------------------
+    // Privacy & Security: Payload Sanitization
+    // -------------------------------------------------------------------------
+    // We read the body text once to:
+    // 1. Inspect 'method' for routing (MEV, Archive, etc)
+    // 2. STRIP any non-standard fields (tracking tokens, metadata) from the JSON
+    // 3. Reconstruct a clean request to send upstream
+
     let method = 'unknown'
     let params: unknown[] = []
+    let requestToUse: Request
+
+    const rawText = await request.text()
 
     try {
-      const body = (await clone.json()) as { method?: string; params?: unknown[] }
-      if (body?.method) {
-        method = body.method
-        params = body.params || []
+      const parsed = JSON.parse(rawText)
+      let sanitized: unknown
+
+      if (Array.isArray(parsed)) {
+        // Batch Request: Sanitize every item
+        sanitized = parsed.map((p: any) => ({
+          id: p.id,
+          jsonrpc: '2.0',
+          method: p.method,
+          params: p.params
+        }))
+        // Note: We don't inspect batch methods for routing yet, defaults to standard
+      } else {
+        // Single Request: Sanitize
+        sanitized = {
+          id: parsed.id,
+          jsonrpc: '2.0',
+          method: parsed.method,
+          params: parsed.params
+        }
+        method = parsed.method || 'unknown'
+        params = parsed.params || []
       }
+
+      // Create new request with clean payload
+      requestToUse = new Request(request.url, {
+        body: JSON.stringify(sanitized),
+        headers: request.headers,
+        method: request.method
+      })
     } catch (_) {
-      // Ignore JSON parse errors
+      // JSON parse failed: Forward raw text (upstream will likely reject it)
+      requestToUse = new Request(request.url, {
+        body: rawText,
+        headers: request.headers,
+        method: request.method
+      })
     }
 
     // Determine request type for smart routing
     const routingType = this.determineRoutingType(method, params)
 
-    // Route based on type
+    // Route based on type, passing the SANITIZED request
     switch (routingType) {
       case 'mev':
-        return this.handleMevRequest(request)
+        return this.handleMevRequest(requestToUse)
       case 'archive':
-        return this.handleArchiveRequest(request, chainSlug)
+        return this.handleArchiveRequest(requestToUse, chainSlug)
       default:
-        return this.handleStandardRequest(request, chainSlug)
+        return this.handleStandardRequest(requestToUse, chainSlug)
     }
   }
 
@@ -225,7 +264,7 @@ export class ChainDO extends DurableObject<Env> {
       const cleanHeaders = new Headers()
       cleanHeaders.set('Content-Type', 'application/json')
       cleanHeaders.set('Accept', 'application/json')
-      // Maybe forward some safe headers?
+      cleanHeaders.set('User-Agent', 'NullRPC/1.0')
 
       const response = await fetch(targetUrl, {
         body: originalRequest.body,
@@ -233,9 +272,15 @@ export class ChainDO extends DurableObject<Env> {
         method: originalRequest.method
       })
 
+      if (!response.ok) {
+        console.warn(`[Proxy] Node failed: ${targetUrl} | Status: ${response.status} | ${response.statusText}`)
+      }
+
       return response
     } catch (e: unknown) {
       const errorMessage = e instanceof Error ? e.message : 'Unknown error'
+      console.error(`[Proxy] Connection error to ${targetUrl}:`, errorMessage)
+
       return new Response(JSON.stringify({ details: errorMessage, error: 'Upstream connection failed' }), {
         headers: { 'Content-Type': 'application/json' },
         status: 502

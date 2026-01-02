@@ -19,41 +19,26 @@ export { ChainDO } from './objects/chain'
  */
 
 /**
- * Strip all Cloudflare user-identifying headers from the request.
- * This ensures we never relay any user data to upstream RPC providers.
+ * Strip ALL headers except the absolute essentials.
+ * We store the IP for rate limiting before this step, so we can now
+ * completely sanitize the request to ensure zero metadata leakage.
  *
- * Headers removed:
- * - cf-connecting-ip: Real client IP
- * - cf-ipcountry: Client country code
- * - cf-ray: Cloudflare request ID (can be correlated)
- * - cf-visitor: Protocol info
- * - x-forwarded-for: Proxy chain IPs
- * - x-forwarded-proto: Protocol
- * - x-real-ip: Real client IP
- * - true-client-ip: Enterprise real IP
+ * Whitelisted Headers:
+ * - content-type: Required for JSON-RPC parsing
+ * - accept: Required for content negotiation
  */
 function stripPrivacyHeaders(request: Request): Request {
-  const headers = new Headers(request.headers)
+  const headers = new Headers()
 
-  // Remove all Cloudflare user-identifying headers
-  headers.delete('cf-connecting-ip')
-  headers.delete('cf-ipcountry')
-  headers.delete('cf-ray')
-  headers.delete('cf-visitor')
-  headers.delete('cf-region')
-  headers.delete('cf-region-code')
-  headers.delete('cf-metro-code')
-  headers.delete('cf-city')
-  headers.delete('cf-postal-code')
-  headers.delete('cf-latitude')
-  headers.delete('cf-longitude')
-  headers.delete('cf-timezone')
-  headers.delete('x-forwarded-for')
-  headers.delete('x-forwarded-proto')
-  headers.delete('x-real-ip')
-  headers.delete('true-client-ip')
+  // Whitelist only essential headers
+  const whitelist = ['content-type', 'accept']
+  for (const key of whitelist) {
+    const value = request.headers.get(key)
+    if (value) headers.set(key, value)
+  }
 
-  // Create a new request with cleaned headers
+  // Create a new request with ONLY the whitelisted headers
+  // All other headers (CF-*, User-Agent, Cookie, Referer, etc) are dropped.
   return new Request(request.url, {
     body: request.body,
     headers,

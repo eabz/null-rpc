@@ -1,15 +1,5 @@
 import { createRawJsonResponse } from '@/utils'
 
-/**
- * Analytics endpoint - queries Analytics Engine for dashboard data
- *
- * Endpoints:
- * - /analytics/overview - Overall stats (last 24h)
- * - /analytics/chains - Per-chain breakdown
- * - /analytics/methods - Most used methods
- * - /analytics/timeseries - Hourly data for graphs
- */
-
 // Analytics Engine SQL queries
 
 // Helper to get chain filter clause
