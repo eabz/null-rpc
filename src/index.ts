@@ -99,29 +99,6 @@ export default {
     }
 
     // -------------------------------------------------------------------------
-    // 4. Admin sync endpoint
-    // -------------------------------------------------------------------------
-    if (path === '/admin/sync') {
-      try {
-        await syncPublicNodes(env)
-        return new Response(JSON.stringify({ message: 'Sync completed', success: true }), {
-          headers: { 'Content-Type': 'application/json' }
-        })
-      } catch (error) {
-        return new Response(
-          JSON.stringify({
-            error: error instanceof Error ? error.message : String(error),
-            success: false
-          }),
-          {
-            headers: { 'Content-Type': 'application/json' },
-            status: 500
-          }
-        )
-      }
-    }
-
-    // -------------------------------------------------------------------------
     // 4. Zero-allocation routing logic
     // -------------------------------------------------------------------------
     // We manually extract path segments to avoid the overhead of `split('/').filter(Boolean)`.
